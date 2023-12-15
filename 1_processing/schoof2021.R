@@ -144,6 +144,8 @@ rowData(schoof)[["peptides"]]$Gene <-
         })
         paste(out, collapse = "; ")
     })
+head(rowData(schoof)[["peptides"]][, "Master.Protein.Accessions"])
+head(rowData(schoof)[["peptides"]][, "Gene"])
 
 ####---- Log-transformation ----####
 

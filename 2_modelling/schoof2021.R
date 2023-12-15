@@ -17,7 +17,7 @@ sce <- getWithColData(schoof, "peptides_log")
 sce <- scpModelWorkflow(
     sce,
     formula = ~ 1 + ## intercept
-        ## normalization
+        ## normalisation
         MedianIntensity +
         ## batch effects
         Channel + File.ID + 

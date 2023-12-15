@@ -11,11 +11,6 @@ library("ggplot2")
 library("patchwork")
 library("dplyr")
 library("tidyr")
-#" to include in scp
-library("ggrepel")
-library("SingleCellExperiment")
-
-sapply(list.files("~/PhD/asca-scp/package/R", full.names = TRUE), source)
 
 ## data
 dataDir <- "~/PhD/asca-scp/scripts/data/"
@@ -32,10 +27,7 @@ daResLeduc <- scpAnnotateResults(
     by = "feature", by2 = "Sequence"
 )
 daResLeducProts <- scpDifferentialAggregate(
-    daResLeduc, fcol = "Leading.razor.protein.id",
-    fun = function(x) median(x, na.rm = TRUE),
-    method = "holm-min",
-    min.prop = 0.5
+    daResLeduc, fcol = "Leading.razor.protein.id"
 )
 
 
@@ -86,7 +78,7 @@ targetProt <- "VIM"
 scebc <- scpKeepEffect(sce, "SampleType")
 sel <- !is.na(rowData(scebc)$gene) & rowData(scebc)$gene == targetProt
 i <- rownames(scebc)[sel]
-baseline <- scpModelIntercept(sce)[i]
+baseline <- scp:::scpModelIntercept(sce)[i]
 lfc <- daResLeduc$SampleType_Melanoma_vs_Monocyte
 lfc <- lfc[lfc$feature %in% i, "Estimate"]
 

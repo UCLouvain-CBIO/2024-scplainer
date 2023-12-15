@@ -629,77 +629,6 @@ vaRes <- scpAnnotateResults(
     vaRes, rowData(sce), by = "feature", by2 = "Sequence"
 )
 (panel1 <- scpVariancePlot(vaRes))
-## Differential analysis on clusters
-daResCluster <- scpDifferentialAnalysis(
-    sce, name = "model_with_cluster",
-    contrasts = list(
-        c("Cluster", "Melanoma_main", "Monocyte"),
-        c("Cluster", "Melanoma_main", "Melanoma_sub")
-    )
-)
-daResCluster <- scpAnnotateResults(
-    daResCluster, rowData(sce), by = "feature", by2 = "Sequence"
-)
-volcanos <- scpVolcanoPlot(
-    daResCluster, textBy = "gene", labelParams = list(max.overlaps = 30)
-)
-volcanos <- lapply(names(volcanos), function(i) {
-    title <- if (grepl("Mono", i)) {
-        "Monocyte <---> Melanoma cell"
-    } else {
-        "Melanoma\nSubpopulation <---> Main"
-    }
-    volcanos[[i]] +
-        ggtitle(title) +
-        theme_minimal()
-})
-(panel2 <- wrap_plots(volcanos))
-## GSEA on differences between main melanoma and sub melanoma
-library("msigdbr")
-library("fgsea")
-library("BiocParallel")
-goBiologicalProcess <- msigdbr(species = "Homo sapiens", category = "C5", 
-                               subcategory = "BP")
-goBiologicalProcess <- split(goBiologicalProcess$gene_symbol, 
-                             goBiologicalProcess$gs_name)
-daResProt <- scpDifferentialAggregate(daResCluster, "gene")
-rank <- daResProt$Cluster_Melanoma_main_vs_Melanoma_sub$Estimate
-names(rank) <-  daResProt$Cluster_Melanoma_main_vs_Melanoma_sub$gene
-rank <- sort(rank, decreasing = FALSE)
-set.seed(1234)
-fgseaRes <- fgsea(goBiologicalProcess, 
-                  rank,
-                  minSize = 20,
-                  maxSize = 200,
-                  nPermSimple = 2000,
-                  BPPARAM = MulticoreParam(workers = 4))
-fgseaRes <- fgseaRes[fgseaRes$padj < 0.05, ]
-(fgseaRes <- fgseaRes[order(fgseaRes$padj), ])
-
-
-library(GSEAmining)
-data("genesets_sel", package = 'GSEAmining')
-gs.filt <- gm_filter(genesets_sel, 
-                     p.adj = 0.05, 
-                     neg_NES = 2.6, 
-                     pos_NES = 2)
-
-
-## Differential analysis on sampletype
-daResSt <- scpDifferentialAnalysis(
-    sce, name = "model",
-    contrasts = list(c("SampleType", "Melanoma", "Monocyte"))
-)
-## Compare sample type vs cluster analysis
-common <- intersect(daResSt[[1]]$feature, daResCluster[[1]]$feature)
-ggplot(data.frame(
-    SampleTypeAnalysis = daResSt[[1]][match(common, daResSt[[1]]$feature), "Estimate"],
-    ClusterAnalysis = daResCluster[[1]][match(common, daResCluster[[1]]$feature), "Estimate"]
-)) +
-    aes(x = SampleTypeAnalysis,
-        y = ClusterAnalysis) +
-    geom_point() +
-    geom_abline(slope = 1, intercept = 0)
 ## Component analysis
 caRes <- scpComponentAnalysis(
     sce, name = "model_with_cluster",
@@ -713,21 +642,142 @@ caRes <- scpComponentAnalysis(
 caResCells <- caRes$bySample
 sce$cell <- colnames(sce)
 caResCells <- scpAnnotateResults(caResCells, colData(sce), by = "cell")
-(panel3 <- 
+(panel2 <- 
         scpComponentPlot(
             caResCells, pointParams = list(aes(colour = Cluster))
         )[[1]] +
         scale_colour_manual(values = populationColors, 
                             labels = c("Melanoma main", "Melanoma subpopulation", "Monocyte"))
 )
-## Create figure
+## Differential analysis on clusters
+daResCluster <- scpDifferentialAnalysis(
+    sce, name = "model_with_cluster",
+    contrasts = list(
+        c("Cluster", "Melanoma_main", "Monocyte"),
+        c("Cluster", "Melanoma_main", "Melanoma_sub")
+    )
+)
+daResCluster <- scpAnnotateResults(
+    daResCluster, rowData(sce), by = "feature", by2 = "Sequence"
+)
+## PSEA on differences between main melanoma and sub melanoma
+library("msigdbr")
+library("fgsea")
+library("BiocParallel")
+goBiologicalProcess <- msigdbr(species = "Homo sapiens", category = "C5", 
+                               subcategory = "BP")
+goBiologicalProcess <- split(goBiologicalProcess$gene_symbol, 
+                             goBiologicalProcess$gs_name)
+daResProt <- scpDifferentialAggregate(daResCluster, "gene")
+rank <- daResProt$Cluster_Melanoma_main_vs_Melanoma_sub$Estimate
+names(rank) <-  daResProt$Cluster_Melanoma_main_vs_Melanoma_sub$gene
+rank <- sort(rank, decreasing = FALSE)
+set.seed(1234)
+pseaRes <- out <- fgsea(goBiologicalProcess, 
+                         rank,
+                         minSize = 20,
+                         maxSize = 200,
+                         nPermSimple = 2000,
+                         BPPARAM = MulticoreParam(workers = 4))
+pseaRes <- pseaRes[pseaRes$padj < 0.05, ]
+(pseaRes <- pseaRes[order(pseaRes$padj), ])
+## Save PSEA results
+out$leadingEdge <- sapply(out$leadingEdge, paste, collapse = ", ")
+write.csv(
+    x = out, file = "data/PSEA_results.csv",
+    row.names = FALSE
+)
+## Create annotation table with 2 pathways
+genes <- rowData(sce)$gene
+p <- "GOBP_PYRUVATE_METABOLIC_PROCESS"
+i <- which(pseaRes$pathway == p)
+pathway <- ifelse(genes %in% pseaRes$leadingEdge[[i]], p, "other")
+p <- "GOBP_OXIDATIVE_PHOSPHORYLATION"
+i <- which(pseaRes$pathway == p)
+pathway <- ifelse(genes %in% pseaRes$leadingEdge[[i]], p, pathway)
+pathway <- gsub("GOBP_", "", pathway)
+pathway <- gsub("_", " ", pathway)
+pathway <- tolower(pathway)
+daResCluster <- scpAnnotateResults(
+    daResCluster, data.frame(gene = genes, pathway = pathway), by = "gene"
+)
+## Plot volcano with PSEA
+volcanos <- scpVolcanoPlot(
+    daResCluster, textBy = "gene", 
+    labelParams = list(max.overlaps = 30),
+    pointParams = list(
+        aes(colour = pathway, 
+            alpha = pathway == "other")
+    )
+)
+volcanos <- lapply(names(volcanos), function(i) {
+    title <- if (grepl("Mono", i)) {
+        "Monocyte <---> Melanoma cell"
+    } else {
+        "Melanoma\nSubpopulation <---> Main"
+    }
+    volcanos[[i]] +
+        ggtitle(title)
+})
+(panel3 <- volcanos[[2]] +
+        scale_alpha_manual(values = c(1, 0.2)) +
+        scale_color_manual(values = c("grey50", "green4", "orange2")) +
+        guides(alpha = "none") +
+        theme_minimal())
 
+## Create figure
 (fig <- panel1 +
+        wrap_elements(full = panel2) +
         panel3 +
-        panel2 +
         plot_layout(
             design = "1222
-                      3333", 
-            guides = "collect") +
+                      3333") +
         plot_annotation(tag_levels = "a"))
-ggsave("scripts/figs/supp_remodel.pdf", fig, height = 6, width = 9)
+ggsave("figs/supp_remodel.pdf", fig, height = 6, width = 7)
+
+## Plot normalised enrichment scores
+(fig <- pseaRes |> 
+        filter(padj < 0.05) |> 
+        mutate(
+            pathway = tolower(pathway),
+            pathway = sub("gobp_", "", pathway),
+            pathway = gsub("_", " ", pathway),
+            pathway = factor(pathway, levels = pathway[order(NES)]),
+            type = ifelse(NES > 0, "Melanoma main", "Melanoma subpopulation")
+        ) |> 
+        ggplot() +
+        aes(y = pathway, 
+            x = NES, 
+            fill = type) +
+        geom_bar(stat = "identity") +
+        scale_fill_manual(
+            values = c(
+                "Melanoma main" =  "skyblue3", "Melanoma subpopulation" = "skyblue"
+            )
+        ) +
+        labs(x = "Normalised enrichment score",
+             y = "",
+             fill = "") +
+        theme_minimal() +
+        theme(legend.position = "none"))
+ggsave("figs/supp_NES.pdf", fig, height = 4, width = 6)
+
+## Compare the differential analysis between modelling sample type vs
+## cluster
+## Differential analysis on sampletype
+daResSt <- scpDifferentialAnalysis(
+    sce, name = "model",
+    contrasts = list(c("SampleType", "Melanoma", "Monocyte"))
+)
+## Compare sample type vs cluster analysis
+common <- intersect(daResSt[[1]]$feature, daResCluster[[1]]$feature)
+data.frame(
+    SampleTypeAnalysis = daResSt[[1]][match(common, daResSt[[1]]$feature), "Estimate"],
+    ClusterAnalysis = daResCluster[[1]][match(common, daResCluster[[1]]$feature), "Estimate"]
+) |> 
+    ggplot() +
+    aes(x = SampleTypeAnalysis,
+        y = ClusterAnalysis) +
+    geom_point() +
+    geom_abline(slope = 1, intercept = 0)
+
