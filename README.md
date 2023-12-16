@@ -3,9 +3,10 @@
 The repository contains the scripts to reproduce the results and 
 figures of the *scplainer* manuscript. 
 
-> Vanderaa, Christophe, and Laurent Gatto. 2021. "scplainer: using
-> linear models to understand mass spectrometry-based single-cell
-> proteomics data." (to be published).
+
+**scplainer: using linear models to understand mass spectrometry-based single-cell proteomics data**
+Christophe Vanderaa, Laurent Gatto bioRxiv 2023.12.14.571792; 
+doi: [https://doi.org/10.1101/2023.12.14.571792](https://doi.org/10.1101/2023.12.14.571792).
 
 ## Abstract
 
