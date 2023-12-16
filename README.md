@@ -5,7 +5,7 @@ figures of the *scplainer* manuscript.
 
 
 **scplainer: using linear models to understand mass spectrometry-based single-cell proteomics data**
-Christophe Vanderaa, Laurent Gatto bioRxiv 2023.12.14.571792; 
+Christophe Vanderaa, Laurent Gatto *bioRxiv* 2023.12.14.571792; 
 doi: [https://doi.org/10.1101/2023.12.14.571792](https://doi.org/10.1101/2023.12.14.571792).
 
 ## Abstract
