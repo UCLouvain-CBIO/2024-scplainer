@@ -32,6 +32,29 @@ analysis of SCP data by moving efforts from dealing with the technical
 aspects of data analysis to focusing on answering biologically
 relevant questions.
 
+## Installation instructions
+
+Participants should install a recent version of R (version >= 4.3.1)
+and run the following code chunk to install the necessary
+dependencies:
+
+```r
+install.packages(c("BiocManager", "remotes"))
+BiocManager::install(version = "3.18", ask = FALSE)
+pkgs <- c("QFeatures", "SingleCellExperiment", "scp", "scpdata",
+          "ggplot2", "dplyr", "patchwork", "scater")
+BiocManager::install(pkgs)
+```
+
+For the second part, also run the following command to install the
+*scplainer* modelling code (pull request 50):
+
+```r
+BiocManager::install("UCLouvain-CBIO/scp#50")
+```
+
+NB: Make sure not to update `scp` when prompted here, and keep the version in PR50.
+
 ## Useful links 
 
 The scplainer approach is implemented in
