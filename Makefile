@@ -38,4 +38,4 @@ figures:
 
 # Remove any useless artefacts
 clean:
-	@rm Rplots.pdf .Rhistory *.Rout
+	@rm -f Rplots.pdf .Rhistory *.Rout

@@ -3,9 +3,10 @@
 The repository contains the scripts to reproduce the results and
 figures of the *scplainer* manuscript.
 
-> Vanderaa, Christophe, and Laurent Gatto. 2021. "scplainer: using
-> linear models to understand mass spectrometry-based single-cell
-> proteomics data." (to be published).
+
+**scplainer: using linear models to understand mass spectrometry-based single-cell proteomics data**
+Christophe Vanderaa, Laurent Gatto *bioRxiv* 2023.12.14.571792;
+doi: [https://doi.org/10.1101/2023.12.14.571792](https://doi.org/10.1101/2023.12.14.571792).
 
 ## Abstract
 
@@ -30,6 +31,27 @@ perform downstream analyses. In conclusion, this work reshapes the
 analysis of SCP data by moving efforts from dealing with the technical
 aspects of data analysis to focusing on answering biologically
 relevant questions.
+
+## Installation instructions
+
+Participants should install a recent version of R (version >= 4.3.1)
+and run the following code chunk to install the necessary
+dependencies:
+
+```r
+install.packages(c("BiocManager", "remotes"))
+BiocManager::install(version = "3.18", ask = FALSE)
+pkgs <- c("QFeatures", "SingleCellExperiment", "scp", "scpdata",
+          "ggplot2", "dplyr", "patchwork", "scater")
+BiocManager::install(pkgs)
+```
+
+For the second part, also run the following command to install the
+*scplainer* modelling code:
+
+```r
+BiocManager::install("UCLouvain-CBIO/scp")
+```
 
 ## Useful links
 
