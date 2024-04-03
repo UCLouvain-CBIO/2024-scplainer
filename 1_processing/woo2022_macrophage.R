@@ -94,5 +94,4 @@ woo <- logTransform(woo, i = 1, name = "peptides_log")
 
 ####---- Save results ----####
 
-saveDir <- "~/PhD/asca-scp/scripts/data/"
-saveRDS(woo, paste0(saveDir, "woo2022_macrophage_processed.rds"))
+saveRDS(woo, "../data/woo2022_macrophage_processed.rds")

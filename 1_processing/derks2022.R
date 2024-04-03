@@ -1,7 +1,7 @@
 #### MINIMAL PROCESSING
 
-## This script performs the minimal processing on the 
-## derks2022 dataset. 
+## This script performs the minimal processing on the
+## derks2022 dataset.
 
 ####---- Loading libraries and preparing data ----####
 
@@ -10,7 +10,7 @@ library("scp")
 library("scpdata")
 library("ggplot2")
 ## BiocManager::install("CambridgeCentreForProteomics/camprotR")
-library("camprotR") 
+library("camprotR")
 
 ## data
 derks <- derks2022()
@@ -21,7 +21,7 @@ assaysToRemove <- c(
 )
 derks <- removeAssay(derks, assaysToRemove)
 requiredRowData <- c(
-    "Protein.Group", "Protein.Ids", "Protein.Names", "Genes", 
+    "Protein.Group", "Protein.Ids", "Protein.Names", "Genes",
     "First.Protein.Description", "Proteotypic", "Stripped.Sequence",
     "Modified.Sequence", "Precursor.Charge", "Precursor.Id"
 )
@@ -105,13 +105,33 @@ derks <- subsetByColData(derks, derks$passQC)
 
 ####---- Building the peptide matrix ----####
 
+## Check precursor to peptide mapping
+rd <- rbindRowData(derks, sel)
+psmsPerPeptide <- sapply(split(rd, rd$assay), function(x) {
+    counts <- table(table(x$Stripped.Sequence))
+    out <- rep(NA, 10)
+    out[1:length(counts)] <- counts
+    out
+})
+psmsPerPeptide <- rowSums(psmsPerPeptide, na.rm = TRUE)
+psmsPerPeptide <- psmsPerPeptide[psmsPerPeptide != 0]
+ggplot(data.frame(
+    nPsms = seq_along(psmsPerPeptide),
+    counts = psmsPerPeptide
+)) +
+    aes(x = nPsms,
+        y = counts) +
+    geom_bar(stat = "identity") +
+    labs(x = "Number PSMs per peptide",
+         title = "derks2022")
+
 ## Aggregate precursors to peptides
 derks <- aggregateFeatures(
     derks, i = sel, fcol = "Stripped.Sequence",
     name = paste0("peptides_", sel),
     fun = colMedians, na.rm = TRUE
 )
-## Join peptide assays 
+## Join peptide assays
 derks <- joinAssays(
     derks, i = paste0("peptides_", sel), name = "peptides"
 )
@@ -122,5 +142,4 @@ derks <- logTransform(derks, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-dataDir <- "~/PhD/asca-scp/scripts/data/"
-saveRDS(derks, paste0(dataDir, "derks2022_processed.rds"))
+saveRDS(derks, "../data/derks2022_processed.rds")

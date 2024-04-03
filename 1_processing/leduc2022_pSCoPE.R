@@ -77,11 +77,6 @@ leduc <- countUniqueFeatures(
     colDataName = "NumberPeptides"
 )
 ## Median intensity per sample
-# for (i in names(leduc)) {
-#     logAssay <- log2(assay(leduc[[i]]))
-#     meds <- colMedians(logAssay, na.rm = TRUE)
-#     colData(leduc)[names(med), "MedianIntensity"] <- meds
-# }
 MedianIntensity <- lapply(experiments(leduc), function(x) {
     out <- colMedians(log(assay(x)), na.rm = TRUE)
     names(out) <- colnames(x)
@@ -114,6 +109,25 @@ leduc$passQC <- !is.na(leduc$MedianCV) & leduc$MedianCV < 0.6 &
 leduc <- subsetByColData(leduc, leduc$passQC)
 
 ####---- Building the peptide matrix ----####
+
+## Check PSM to peptide mapping
+rd <- rbindRowData(leduc, grep("^[ew]", names(leduc)))
+psmsPerPeptide <- sapply(split(rd, rd$assay), function(x) {
+    counts <- table(table(x$Sequence))
+    out <- rep(NA, 10)
+    out[1:length(counts)] <- counts
+    out
+})
+psmsPerPeptide <- rowSums(psmsPerPeptide, na.rm = TRUE)
+psmsPerPeptide <- psmsPerPeptide[psmsPerPeptide != 0]
+ggplot(data.frame(
+    nPsms = seq_along(psmsPerPeptide),
+    counts = psmsPerPeptide
+)) +
+    aes(x = nPsms,
+        y = counts) +
+    geom_bar(stat = "identity") +
+    labs(x = "Number PSMs per peptide")
 
 ## Aggregate PSMs to peptides
 peptideAssays <- paste0("peptides_", names(leduc))
@@ -167,5 +181,4 @@ leduc <- logTransform(leduc, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveDir <- "~/PhD/asca-scp/scripts/data/"
-saveRDS(leduc, paste0(saveDir, "leduc2022_pSCoPE_processed.rds"))
+saveRDS(leduc, "../data/leduc2022_pSCoPE_processed.rds")

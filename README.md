@@ -1,7 +1,7 @@
 # scplainer: using linear models to understand mass spectrometry-based single-cell proteomics data (source code)
 
-The repository contains the scripts to reproduce the results and 
-figures of the *scplainer* manuscript. 
+The repository contains the scripts to reproduce the results and
+figures of the *scplainer* manuscript.
 
 > Vanderaa, Christophe, and Laurent Gatto. 2021. "scplainer: using
 > linear models to understand mass spectrometry-based single-cell
@@ -31,7 +31,7 @@ analysis of SCP data by moving efforts from dealing with the technical
 aspects of data analysis to focusing on answering biologically
 relevant questions.
 
-## Useful links 
+## Useful links
 
 The scplainer approach is implemented in
 [scp](https://github.com/UCLouvain-CBIO/scp)
@@ -62,4 +62,58 @@ height="150">
 - `2_modelling` contains R scripts to perform splainer's modelling
  approach, one script per SCP data set.
 - `3_make_figures` contains R scripts to generate the figures from the
-  article. 
+  article.
+
+## Reproducing the analysis
+
+You can reproduce the analysis presented in the scplainer paper on
+your local machine using `Docker`. You must first install Docker.
+Then, pull the image from the
+[DockerHub repository](https://hub.docker.com/repository/docker/cvanderaa/scplainer_paper_docker).
+
+```
+docker pull cvanderaa/scplainer_paper_docker:latest
+```
+
+Then, clone the scplainer GitHub repo
+
+
+## Reproducing analysis through a Rstudio interface
+
+Cd in github repo
+
+You can start a Rstudio session within a Docker container using the
+following command through your computer terminal:
+
+```
+docker run -e PASSWORD=bioc -p 8787:8787 -v `pwd`:/home/rstudio/2023-scplainer/ cvanderaa/scplainer_paper_docker:latest
+```
+
+Note you should use `%CD%` instead of `pwd` when using Windows.
+
+Open your browser and go to http://localhost:8787. The USER is
+`rstudio` and the password is `bioc`. See the [DockerHub
+repository](https://hub.docker.com/repository/docker/cvanderaa/scplainer_paper_docker)
+for more detailed information on getting started with `Docker`.
+
+## Reproducing analysis through the command line
+
+
+
+## Note to future self
+
+### Build the docker image
+
+If new dependencies are required, update the `Dockerfile` accordingly.
+Build the image (make sure to `cd` in the `2023-scplainer/Docker`
+folder):
+
+```
+docker build -t cvanderaa/scplainer_paper_docker:latest .
+```
+
+When complete, push the new image to DockerHub:
+
+```
+docker push cvanderaa/scp_replication_docker:latest
+```

@@ -16,7 +16,7 @@ library("scater")
 library("dplyr")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "~/Documents/PhD/2023-scplainer/data/"
 
 ## define colors
 populationColors <- c(
@@ -674,11 +674,11 @@ names(rank) <-  daResProt$Cluster_Melanoma_main_vs_Melanoma_sub$gene
 rank <- sort(rank, decreasing = FALSE)
 set.seed(1234)
 pseaRes <- out <- fgsea(goBiologicalProcess, 
-                         rank,
-                         minSize = 20,
-                         maxSize = 200,
-                         nPermSimple = 2000,
-                         BPPARAM = MulticoreParam(workers = 4))
+                        rank,
+                        minSize = 20,
+                        maxSize = 200,
+                        nPermSimple = 2000,
+                        BPPARAM = MulticoreParam(workers = 4))
 pseaRes <- pseaRes[pseaRes$padj < 0.05, ]
 (pseaRes <- pseaRes[order(pseaRes$padj), ])
 ## Save PSEA results
@@ -781,3 +781,58 @@ data.frame(
     geom_point() +
     geom_abline(slope = 1, intercept = 0)
 
+####---- Assess p-value distribution for null ----####
+
+leduc <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_processed.rds"))
+sce <- getWithColData(leduc, "peptides_log")
+
+## Assign mock labels to one of the cell types (monocytes)
+## The mock label is randomly assigned within each batch
+mock <- sce$SampleType
+mock <- split(mock, sce$Set)
+set.seed(1234)
+mock <- lapply(mock, function(labels) {
+    i <- which(labels == "Monocyte")
+    i1 <- sample(i, length(i) / 2)
+    i2 <- i[!i %in% i1]
+    labels[i1] <- "Mock1"
+    labels[i2] <- "Mock2"
+    labels
+})
+sce$Mock <- unname(do.call(c, mock))
+sce <- sce[, grepl("Mock", sce$Mock)]
+
+## Model with mock labels
+sce <- scpModelWorkflow(
+    sce,
+    formula = ~ 1 + ## intercept
+        ## normalization
+        MedianIntensity +
+        ## batch effects
+        Channel + Set + 
+        ## biological variability
+        Mock
+)
+scpModelFilterPlot(sce)
+scpModelFilterThreshold(sce) <- 2
+# saveRDS(sce, paste0(dataDir, "leduc2022_pSCoPE_modelled_mock.rds"))
+
+## Differential analysis
+daResLeduc <- scpDifferentialAnalysis(
+    sce,
+    contrasts = list(c("Mock", "Mock1", "Mock2"))
+)
+daResLeduc <- scpAnnotateResults(
+    daResLeduc, rowData(sce)[, c("Sequence", "Leading.razor.protein.id", "gene")],
+    by = "feature", by2 = "Sequence"
+)
+
+## P-value distribution
+(fig <- ggplot(data.frame(daResLeduc$Mock_Mock1_vs_Mock2)) +
+        aes(x = pvalue) +
+        geom_histogram(bins = 30) +
+        labs(x = "(Unadjusted) p-value") +
+        theme_minimal() 
+)
+
+ggsave("figs/supp_pvalue_null.pdf", fig, height = 3, width = 4)

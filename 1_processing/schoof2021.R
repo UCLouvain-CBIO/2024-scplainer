@@ -110,6 +110,26 @@ schoof <- dropEmptyAssays(schoof)
 
 ####---- Building the peptide matrix ----####
 
+## Check PSM to peptide mapping
+rd <- rbindRowData(schoof, grep("^F", names(schoof)))
+psmsPerPeptide <- sapply(split(rd, rd$assay), function(x) {
+    counts <- table(table(x$Annotated.Sequence))
+    out <- rep(NA, 10)
+    out[1:length(counts)] <- counts
+    out
+})
+psmsPerPeptide <- rowSums(psmsPerPeptide, na.rm = TRUE)
+psmsPerPeptide <- psmsPerPeptide[psmsPerPeptide != 0]
+ggplot(data.frame(
+    nPsms = seq_along(psmsPerPeptide),
+    counts = psmsPerPeptide
+)) +
+    aes(x = nPsms,
+        y = counts) +
+    geom_bar(stat = "identity") +
+    labs(x = "Number PSMs per peptide", 
+         title = "schoof2021")
+
 ## Aggregate PSMs to peptides
 peptideAssays <- paste0("peptides_", names(schoof))
 schoof <- aggregateFeatures(schoof,
@@ -153,6 +173,4 @@ schoof <- logTransform(schoof, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveDir <- "~/PhD/asca-scp/scripts/data/"
-saveRDS(schoof, paste0(saveDir, "schoof2021_processed.rds"))
-
+saveRDS(schoof, "../data/schoof2021_processed.rds")

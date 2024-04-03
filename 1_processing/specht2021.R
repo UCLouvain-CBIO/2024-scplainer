@@ -1,7 +1,7 @@
 #### MINIMAL PROCESSING
 
 ## This script performs the minimal processing on the specht2021
-## data set. 
+## data set.
 
 ####---- Loading libraries and preparing data ----####
 
@@ -158,6 +158,4 @@ specht <- logTransform(specht, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveDir <- "~/PhD/asca-scp/scripts/data/"
-saveRDS(specht, paste0(saveDir, "specht2021_processed.rds"))
-
+saveRDS(specht, "../data/specht2021_processed.rds")

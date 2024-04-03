@@ -83,5 +83,4 @@ leduc <- logTransform(leduc, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveDir <- "~/PhD/asca-scp/scripts/data/"
-saveRDS(leduc, paste0(saveDir, "leduc2022_plexDIA_processed.rds"))
+saveRDS(leduc, "../data/leduc2022_plexDIA_processed.rds")

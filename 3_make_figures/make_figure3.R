@@ -13,8 +13,7 @@ library("dplyr")
 library("tidyr")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
-sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
+sce <- readRDS("./data/leduc2022_pSCoPE_modelled.rds")
 
 ####---- Differential analysis ----####
 
@@ -29,7 +28,6 @@ daResLeduc <- scpAnnotateResults(
 daResLeducProts <- scpDifferentialAggregate(
     daResLeduc, fcol = "Leading.razor.protein.id"
 )
-
 
 ####---- Panel: significant vs non-significant ----####
 
@@ -123,4 +121,4 @@ df <- cbind(df, colData(scebc)[df$name, ])
      plot_layout(design = "1222
                            3333") +
      plot_annotation(tag_levels = "a"))
-ggsave("scripts/figs/differential.pdf", fig, height = 8, width = 10)
+ggsave("./figs/differential.pdf", fig, height = 8, width = 10)
