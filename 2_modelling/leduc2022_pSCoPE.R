@@ -8,7 +8,7 @@
 library("scp")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
 leduc <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_processed.rds"))
 
 ####---- Model the data ----####
@@ -20,7 +20,7 @@ sce <- scpModelWorkflow(
         ## normalization
         MedianIntensity +
         ## batch effects
-        Channel + Set + 
+        Channel + Set +
         ## biological variability
         SampleType
 )

@@ -8,7 +8,7 @@
 library("scp")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
 schoof <- readRDS(paste0(dataDir, "schoof2021_processed.rds"))
 
 ####---- Model the data ----####
@@ -20,7 +20,7 @@ sce <- scpModelWorkflow(
         ## normalisation
         MedianIntensity +
         ## batch effects
-        Channel + File.ID + 
+        Channel + File.ID +
         ## biological variability
         Population
 )

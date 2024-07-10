@@ -8,7 +8,7 @@
 library("scp")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
 derks <- readRDS(paste0(dataDir, "derks2022_processed.rds"))
 
 ####---- Model the data ----####

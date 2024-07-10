@@ -9,18 +9,23 @@
 ## libraries
 library("scp")
 library("ggplot2")
+library("ggrepel")
 library("patchwork")
 library("limma")
 library("MsCoreUtils")
 library("scater")
 library("dplyr")
+library("msigdbr")
+library("fgsea")
+library("BiocParallel")
 
-## data
-dataDir <- "~/Documents/PhD/2023-scplainer/data/"
+## data and figs
+dataDir <- "data/"
+figDir <- "figs/"
 
 ## define colors
 populationColors <- c(
-    Monocyte = "coral", 
+    Monocyte = "coral",
     Melanoma = "skyblue3",
     "Melanoma_main" = "skyblue3",
     "Undefined Melanoma" = "gray",
@@ -31,9 +36,9 @@ populationColors <- c(
 
 ####---- Workflow: order matters ----####
 
-## Batch correction and imputation is not the same as imputation and 
+## Batch correction and imputation is not the same as imputation and
 ## batch correction
-sce <- readRDS("scripts/data/leduc2022_pSCoPE_modelled.rds")
+sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 # sce <- filterNA(sce, pNA = 0.9)
 Y <- scpModelInput(sce)
 annot <- colData(sce)
@@ -87,7 +92,7 @@ panel3 <- ggplot(data.frame(PC = YibPca$v, colData(sce))) +
                     guides = "collect") +
         plot_annotation(tag_levels = "a") &
         scale_colour_manual(values = populationColors))
-ggsave("scripts/figs/supp_workflow_order_matters.pdf", fig, 
+ggsave(paste0(figDir, "supp_workflow_order_matters.pdf"), fig,
        width = 9, height = 7)
 
 ####---- Workflow: steps inside or outside modelling ----####
@@ -114,12 +119,13 @@ modelData <- function(object, normType, batchCorrectionType, subset) {
 
 batchCorrect <- function(object) {
     assay(object) <- removeBatchEffect(
-        assay(object), batch = object$Set, batch2 = object$Channel, 
+        assay(object), batch = object$Set, batch2 = object$Channel,
         design = model.matrix(~ SampleType, colData(object))
     )
     object
 }
 
+## Define data processing strategies
 strategies <- do.call(rbind, list(
     c(1, "none", "none"),
     c(2, "before", "none"),
@@ -134,9 +140,11 @@ strategies <- do.call(rbind, list(
 colnames(strategies) <- c("strategy", "normalisation", "batch_correction")
 strategies <- data.frame(strategies)
 
-sce <- readRDS("scripts/data/leduc2022_pSCoPE_modelled.rds")
-source("scripts/3_make_figures/utils.R")
+## Get data and benchmarking code
+sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
+source("3_make_figures/utils.R")
 
+## Run strategies
 results <- list()
 system.time({
     for (i in 1:nrow(strategies)) {
@@ -151,24 +159,17 @@ system.time({
         results[[i]]$strategy <- strategies[i, ]
     }
 })
-## Takes a bit less than 1h
-# save(results, file = "package/data/results.rda")
-results <- lapply(results, function(r) {
-    r$clustering <- clusterData(r$dimred, sce$SampleType)
-    set.seed(1234)
-    r$tsne <- calculateTSNE(t(r$dimred))
-    r
-})
+
 ## Plot metrics
-(figMetrics <- lapply(results, function(r) cbind(r$metrics, r$strategy)) |> 
-        do.call(what = rbind) |> 
-        mutate(label =  paste("Strategy", strategy), 
+(figMetrics <- lapply(results, function(r) cbind(r$metrics, r$strategy)) |>
+        do.call(what = rbind) |>
+        mutate(label =  paste("Strategy", strategy),
                strategy = paste(
                    "Strategy", strategy,
-                   "\nNorm:", normalisation, 
+                   "\nNorm:", normalisation,
                    "\nBatch correction: ", batch_correction, "\n"
                )
-        ) |> 
+        ) |>
         ggplot() +
         aes(x = biological,
             y = 1 - technical,
@@ -180,15 +181,13 @@ results <- lapply(results, function(r) {
 
 ## Plot PCA
 (fig <- wrap_plots(lapply(results, function(r) {
-    strategy <- paste(
-        "Norm:", r$strategy$normalisation, 
-        "\nBatch correction: ", r$strategy$batch_correction
-    )
-    ggplot(data.frame(r$dimred, cluster = r$clustering)) +
+    strategy <- paste("Strategy", r$strategy)
+    ggplot(data.frame(r$pca, r$annotations)) +
         aes(x = PC1,
             y = PC2,
-            colour = sce$SampleType) +
+            colour = SampleType) +
         geom_point(size = 1, alpha = 0.5) +
+        scale_colour_manual(values = populationColors, name = "Cell Type") +
         ggtitle(strategy) +
         theme_minimal()
 }), guides = "collect"))
@@ -196,14 +195,10 @@ results <- lapply(results, function(r) {
 ## Plot t-SNE
 (figTSNE <- wrap_plots(lapply(results, function(r) {
     strategy <- paste("Strategy", r$strategy)
-    # strategy <- paste(
-    #     "Norm:", r$strategy$normalisation, 
-    #     "\nBatch correction: ", r$strategy$batch_correction
-    # )
-    ggplot(data.frame(r$tsne, cluster = r$clustering)) +
+    ggplot(data.frame(r$tsne, r$annotations)) +
         aes(x = TSNE1,
             y = TSNE2,
-            colour = sce$SampleType) +
+            colour = SampleType) +
         geom_point(size = 1, alpha = 0.5) +
         scale_colour_manual(values = populationColors, name = "Cell Type") +
         ggtitle(strategy) +
@@ -213,55 +208,58 @@ results <- lapply(results, function(r) {
 (fig <- figMetrics +
         figTSNE +
         plot_annotation(tag_levels = "a") +
-        plot_layout(guides = "collect", 
+        plot_layout(guides = "collect",
                     design = "1222"))
-ggsave("scripts/figs/supp_workflow_steps.pdf", fig, 
+ggsave(paste0(figDir, "supp_workflow_steps.pdf"), fig,
        width = 12, height = 8)
 
 ####---- Workflow: n/p filter ----####
 
 sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 pNA <- nNA(sce)$nNArows$pNA
-npRatio <- scpModelFilterNPRatio(sce)
-(fig <- ggplot(data.frame(pNA, npRatio)) +
+npRatio <- scpModelFilterNPRatio(sce, filtered = FALSE)
+(fig <- ggplot(data.frame(pNA, npRatio, df)) +
         aes(x = pNA,
             y = npRatio) +
         geom_point(size = 0.5, alpha = 0.2) +
         geom_vline(xintercept = 0.95, colour = "firebrick", linewidth = 1.5) +
         geom_hline(yintercept = 1, colour = "orange2", linewidth = 1.5) +
         theme_minimal())
-ggsave("scripts/figs/supp_workflow_filter.pdf", fig, 
+ggsave(paste0(figDir, "supp_workflow_filter.pdf"), fig,
        width = 4, height = 4)
 
 ####---- Variance analysis ----####
 
 ## VIM is not influenced by cell size
-sce <- readRDS("scripts/data/leduc2022_pSCoPE_modelled.rds")
-vaRes <- scpVarianceAnalysis(sce) |> 
+sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
+vaRes <- scpVarianceAnalysis(sce) |>
     scpAnnotateResults(
-        rowData(sce)[, c("Sequence", "gene")], 
+        rowData(sce)[, c("Sequence", "gene")],
         by = "feature", by2 = "Sequence"
     )
 ## Best peptide
 target <- "CORO1A"
-i <- data.frame(vaRes$SampleType) |> 
-    filter(!is.na(gene) & gene == target) |> 
-    slice_max(SS) |> 
+i <- data.frame(vaRes$SampleType) |>
+    filter(!is.na(gene) & gene == target) |>
+    slice_max(SS) |>
     pull(feature)
 ## Create annotation with cell sizes
-cellenoneData <- read.csv("~/PhD/.localData/SCP/leduc2022/pSCoPE/cellenoneData.csv", row.names = 1)
+cellenoneData <- read.csv(paste0(dataDir, "cellenoneData.csv"), row.names = 1)
 cellenoneData$Channel <- as.numeric(sub("^RI(\\d*)$", "\\1", cellenoneData$Label))
 tmts <- c("126", paste0(rep(127:134, each = 2), rep(c("N", "C"), 8)), "135N")
 cellenoneData$Channel <- paste0("TMT", tmts[cellenoneData$Channel])
 annot <- left_join(data.frame(colData(sce)),
                    cellenoneData[, c("Set", "Channel", "Diameter", "Elongation")],
                    by = c("Set", "Channel"))
-(fig <- ggplot(data.frame(logIntensity = assay(scpModelEffects(sce)[["MedianIntensity"]])[i, ],
+(fig <- ggplot(data.frame(logIntensity = assay(sce)[i, ],
+                          annot)) +
+        ggtitle("Raw data") +
+        ggplot(data.frame(logIntensity = assay(scpModelEffects(sce)[["MedianIntensity"]])[i, ],
                           annot)) +
         ggtitle("Normalization effect") +
         ggplot(data.frame(logIntensity = assay(scpKeepEffect(sce, c("SampleType")))[i, ],
                           annot)) +
-        ggtitle("Cell type effect") +
+        ggtitle("Corrected data") +
         plot_layout(guides = "collect") +
         plot_annotation(title = paste(
             "Effect of cell diameter on", i, "(", target, ") intensity"
@@ -276,8 +274,8 @@ annot <- left_join(data.frame(colData(sce)),
              colour = "Cell type") &
         theme_minimal())
 ggsave(
-    "scripts/figs/supp_variance_diameter.pdf", fig,
-    width = 8, height = 4
+    paste0(figDir, "supp_variance_diameter.pdf"), fig,
+    width = 11, height = 4
 )
 
 ####---- Differential analysis ----####
@@ -328,15 +326,15 @@ for (what in c("unmodelled", "APCA_SampleType")) {
                 "Variance explained by top 20 PCs\n",
                 "for the ", title),
             subtitle = paste0(
-                round(sum(df$pvar) * 100), 
+                round(sum(df$pvar) * 100),
                 "% cumulated variance explained"
             )) +
         theme_minimal()
     panels <- c(panels, list(pl))
 }
-fig <- wrap_plots(panels) +
-    plot_annotation(tag_levels = "a")
-ggsave("scripts/figs/supp_component_explained_var.pdf", fig, height = 4, width = 7)
+(fig <- wrap_plots(panels) +
+    plot_annotation(tag_levels = "a"))
+ggsave(paste0(figDir, "supp_component_explained_var.pdf"), fig, height = 4, width = 7)
 
 ## t-SNE for different variables
 pcaUnmodelled <- caRes$bySample$unmodelled
@@ -356,14 +354,14 @@ for (what in c("unmodelled", "APCA_SampleType")) {
         x <- tsneSampleType
         title <- "Batch corrected data"
     }
-    for (effect in scpModelEffectNames(sce)) {
-        pl <- data.frame(x, colData(sce)) |> 
+    for (effect in scp:::scpModelEffectNames(sce)) {
+        pl <- data.frame(x, colData(sce)) |>
             ggplot() +
             aes(x = TSNE1,
                 y = TSNE2,
                 colour = .data[[effect]]) +
             geom_point(alpha = 0.6) +
-            labs(title = title, 
+            labs(title = title,
                  subtitle = paste0("Coloured by ", effect)) +
             theme_minimal() +
             theme(legend.position = "none")
@@ -373,7 +371,7 @@ for (what in c("unmodelled", "APCA_SampleType")) {
 (fig <- wrap_plots(supp) +
         plot_layout(nrow = 2) +
         plot_annotation(tag_levels = "a"))
-ggsave("scripts/figs/supp_component_batch_qc.pdf", fig, height = 8, width = 12)
+ggsave(paste0(figDir, "supp_component_batch_qc.pdf"), fig, height = 8, width = 12)
 
 ## Cell cluster analysis on raw data
 clusters <- list()
@@ -382,7 +380,7 @@ clusters$unmodelled <- as.factor(kmeans(pcaUnmodelled, 3)$cluster)
 set.seed(11) ## set seed to match clustering of the main component fig
 clusters$batchCorrected <- as.factor(kmeans(apcaSampleType, 3)$cluster)
 tsnes <- list(
-    unmodelled = tsneUnmodelled, 
+    unmodelled = tsneUnmodelled,
     batchCorrected = tsneSampleType
 )
 panels <- list()
@@ -405,119 +403,7 @@ for (cl in names(clusters)) {
 }
 (fig <- wrap_plots(panels) +
         plot_layout(guide = "collect"))
-ggsave("scripts/figs/supp_component_clustering.pdf", fig, height = 7, width = 7)
-
-## Peptide cluster analysis for SampleType
-
-if (FALSE) { ## in case I would need this
-    ## Cluster analysis
-    caResProts <- lapply(caResProts, function(x) {
-        pci <- grep("^PC\\d", colnames(x))
-        x$cluster <- as.factor(kmeans(x[, pci], 150)$cluster)
-        x
-    })
-    ## GO enrichment analysis on sample type
-    compBiol <- caResProts$APCA_SampleType
-    enrichResBiol <- lapply(split(compBiol, compBiol$cluster), function(x) {
-        res <- enrichGO(
-            x$gene, org.Hs.eg.db, keyType = "SYMBOL", ont = "BP",
-            pAdjustMethod = "BH", qvalueCutoff = 0.05, 
-            universe = compBiol$gene, minGSSize = 10, maxGSSize = 50
-        )
-        pathway <- head(res[, "Description"], 1)
-        if (!length(pathway)) pathway <- NA
-        data.frame(
-            pathway = pathway, cluster = unique(x$cluster)
-        )
-    })
-    enrichResBiol <- do.call(rbind, enrichResBiol)
-    ## Plot
-    caResProtsSampleType <- scpAnnotateResults(
-        caResProts["APCA_SampleType"], enrichResBiol, by = "cluster"
-    )
-    (panel3 <- scpComponentPlot(
-        caResProtsSampleType, pointAes = aes(colour = pathway)
-    )[[1]] +
-            geom_label_repel(data = data.frame(caResProtsSampleType[[1]]) |> 
-                                 group_by(pathway) |> 
-                                 summarise(PC1 = median(PC1),
-                                           PC2 = median(PC2)),
-                             aes(x = PC1, 
-                                 y = PC2,
-                                 colour = pathway,
-                                 label = pathway),
-                             size = 3) +
-            theme(legend.position = "none"))
-    
-    ## Peptide cluster analysis for residuals
-    
-    ## GO enrichment analysis on residuals
-    compResid <- caResProts$residuals
-    enrichResResid <- lapply(split(compResid, compResid$cluster), function(x) {
-        res <- enrichGO(
-            x$gene, org.Hs.eg.db, keyType = "SYMBOL", ont = "BP",
-            pAdjustMethod = "BH", qvalueCutoff = 0.05, 
-            universe = compResid$gene, minGSSize = 10, maxGSSize = 50
-        )
-        pathway <- head(res[, "Description"], 1)
-        if (!length(pathway)) pathway <- NA
-        data.frame(
-            pathway = pathway, cluster = unique(x$cluster)
-        )
-    })
-    enrichResResid <- do.call(rbind, enrichResResid)
-    ## Plot
-    caResProtsResid <- scpAnnotateResults(
-        caResProts["residuals"], enrichRes, by = "cluster"
-    )
-    (panel4 <- scpComponentPlot(
-        caResProtsResid["residuals"], pointAes = aes(colour = pathway)
-    )[[1]] +
-            geom_label_repel(data = data.frame(caResProtsResid[[1]]) |> 
-                                 group_by(pathway) |> 
-                                 summarise(PC1 = median(PC1),
-                                           PC2 = median(PC2)),
-                             aes(x = PC1, 
-                                 y = PC2,
-                                 colour = pathway,
-                                 label = pathway),
-                             size = 3) +
-            theme(legend.position = "none"))
-    
-    ## Emert's markers
-    
-    ## The marker table was retrieved from the slavov lab in the repo:
-    ## https://drive.google.com/drive/folders/116XGOyPpn6g0qWz8i32ZU215kjSZm-KJ
-    markers <- read.csv("~/PhD/.localData/SCP/leduc2022/pSCoPE/misc/Melanoma_diff_exp_raj.csv")
-    markers <- markers[!is.na(markers$padj) & markers$padj < 0.1, ]
-    up <- markers$gene_id[markers$log2FoldChange > 0]
-    down <- markers$gene_id[markers$log2FoldChange < 0]
-    proteinIds <- unique(rowData(sce)$Leading.razor.protein.id)
-    proteinConversionDf <- transcripts(
-        EnsDb.Hsapiens.v86, 
-        columns = "gene_id",
-        return.type = "data.frame",
-        filter = UniprotFilter(proteinIds)
-    )
-    annot <- proteinConversionDf[, -2]
-    annot$ResistanceMarker <- annot$gene_id %in% markers$gene_id
-    annot$MarkerDirection <- "none"
-    annot$MarkerDirection[annot$gene_id %in% up] <- "up"
-    annot$MarkerDirection[annot$gene_id %in% down] <- "down"
-    caResPeps <- scpAnnotateResults(
-        caResPeps, annot, by = "Leading.razor.protein.id", by2 = "uniprot_id"
-    )
-    plEmert <- scpComponentPlot(
-        .scaleComponentsToUnity(caResPeps, paste0("PC", 1:2)),
-        pointAes = aes(alpha = ResistanceMarker,
-                       colour = MarkerDirection))
-    (panel3 <- plEmert$APCA_SampleType +
-            scale_colour_manual(values = c(down = "dodgerblue", 
-                                           up = "coral", 
-                                           none = "gray30")) +
-            scale_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.05),
-                               na.value = 0))
-}
+ggsave(paste0(figDir, "supp_component_clustering.pdf"), fig, height = 7, width = 7)
 
 ####---- Integration analysis ----####
 
@@ -533,9 +419,9 @@ dfLeduc <- scpDifferentialAnalysis(
         rowData(leduc)[, c("Sequence", "Leading.razor.protein.id", "gene")],
         by = "feature", by2 = "Sequence"
     ) |>
-    getListElement(1) |> 
-    data.frame() |> 
-    dplyr::select(padj, Estimate, feature) |> 
+    getListElement(1) |>
+    data.frame() |>
+    dplyr::select(padj, Estimate, feature) |>
     dplyr::rename(padj_leduc = padj, logfc_leduc = Estimate)
 dfIntegration <- scpDifferentialAnalysis(
     integration, contrasts = list(c("Celltype", "Melanoma", "Monocyte"))
@@ -544,10 +430,10 @@ dfIntegration <- scpDifferentialAnalysis(
         rowData(integration)[, c("Peptide", "ProteinId", "Gene")],
         by = "feature", by2 = "Peptide"
     ) |>
-    getListElement(1) |> 
-    data.frame() |> 
-    dplyr::select(padj, Estimate, feature) |> 
-    dplyr::filter(!is.na(Estimate)) |> 
+    getListElement(1) |>
+    data.frame() |>
+    dplyr::select(padj, Estimate, feature) |>
+    dplyr::filter(!is.na(Estimate)) |>
     dplyr::rename(padj_integr = padj, logfc_integr = Estimate)
 dfAll <- inner_join(dfIntegration, dfLeduc, by = "feature")
 nrow(dfAll)
@@ -569,55 +455,55 @@ table(dfAll$padj_integr < 0.05, dfAll$padj_leduc < 0.05) / nrow(dfAll)
 # TRUE  0.2304618 0.2357904
 
 ## The two analyses provide contradictory results for some peptides
-i <- "SFVLNLGK" 
+i <- "SFVLNLGK"
 prot <- rowData(integration)[i, "Gene"]
 (fig <- ggplot(data.frame(
-    logIntensity = assay(integration)[i, ], 
+    logIntensity = assay(integration)[i, ],
     colData(integration)
 )) +
         aes(x = dataset,
             y = logIntensity,
             fill = Celltype) +
-        labs(y = "Unmodelled log2(Intensity)", 
+        labs(y = "Unmodelled log2(Intensity)",
              x = "Data set") +
-        ggtitle("Integration data set\nBefore modelling") + 
+        ggtitle("Integration data set\nBefore modelling") +
         ggplot(data.frame(
-            logIntensity = assay(leduc)[i, ], 
+            logIntensity = assay(leduc)[i, ],
             colData(leduc)
         )) +
         aes(x = lcbatch,
             y = logIntensity,
             fill = SampleType) +
-        labs(y = "Unmodelled log2(Intensity)", 
+        labs(y = "Unmodelled log2(Intensity)",
              x = "Chromatographic batch") +
-        ggtitle("leduc2022 data set\nBefore modelling") + 
+        ggtitle("leduc2022 data set\nBefore modelling") +
         ggplot(data.frame(
-            logIntensity = assay(scpKeepEffect(integration, "Celltype"))[i, ], 
+            logIntensity = assay(scpKeepEffect(integration, "Celltype"))[i, ],
             colData(integration)
         )) +
         aes(x = dataset,
             y = logIntensity,
             fill = Celltype) +
-        labs(y = "Batch-corrected log2(Intensity)", 
+        labs(y = "Batch-corrected log2(Intensity)",
              x = "Data set") +
-        ggtitle("Integration data set\nAfter modelling") + 
+        ggtitle("Integration data set\nAfter modelling") +
         ggplot(data.frame(
-            logIntensity = assay(scpKeepEffect(leduc, "SampleType"))[i, ], 
+            logIntensity = assay(scpKeepEffect(leduc, "SampleType"))[i, ],
             colData(leduc)
         )) +
         aes(x = lcbatch,
             y = logIntensity,
             fill = SampleType) +
-        labs(y = "Batch-corrected log2(Intensity)", 
+        labs(y = "Batch-corrected log2(Intensity)",
              x = "Chromatographic batch") +
-        ggtitle("leduc2022 data set\nAfter modelling") + 
+        ggtitle("leduc2022 data set\nAfter modelling") +
         plot_layout(nrow = 2) +
         plot_annotation(paste(i, "(", prot, ")"), tag_levels = "a") &
         geom_boxplot() &
         scale_fill_manual(values = populationColors) &
         theme_minimal() &
         theme(axis.text.x = element_text(angle = 30, hjust = 1)))
-ggsave("scripts/figs/supp_integration.pdf", fig, height = 9, width = 9)
+ggsave(paste0(figDir, "supp_integration.pdf"), fig, height = 9, width = 9)
 
 ####---- Re-explore leduc2022 with clusters ----####
 
@@ -642,18 +528,17 @@ caRes <- scpComponentAnalysis(
 caResCells <- caRes$bySample
 sce$cell <- colnames(sce)
 caResCells <- scpAnnotateResults(caResCells, colData(sce), by = "cell")
-(panel2 <- 
+(panel2 <-
         scpComponentPlot(
             caResCells, pointParams = list(aes(colour = Cluster))
         )[[1]] +
-        scale_colour_manual(values = populationColors, 
+        scale_colour_manual(values = populationColors,
                             labels = c("Melanoma main", "Melanoma subpopulation", "Monocyte"))
 )
 ## Differential analysis on clusters
 daResCluster <- scpDifferentialAnalysis(
     sce, name = "model_with_cluster",
     contrasts = list(
-        c("Cluster", "Melanoma_main", "Monocyte"),
         c("Cluster", "Melanoma_main", "Melanoma_sub")
     )
 )
@@ -661,30 +546,27 @@ daResCluster <- scpAnnotateResults(
     daResCluster, rowData(sce), by = "feature", by2 = "Sequence"
 )
 ## PSEA on differences between main melanoma and sub melanoma
-library("msigdbr")
-library("fgsea")
-library("BiocParallel")
-goBiologicalProcess <- msigdbr(species = "Homo sapiens", category = "C5", 
+goBiologicalProcess <- msigdbr(species = "Homo sapiens", category = "C5",
                                subcategory = "BP")
-goBiologicalProcess <- split(goBiologicalProcess$gene_symbol, 
+goBiologicalProcess <- split(goBiologicalProcess$gene_symbol,
                              goBiologicalProcess$gs_name)
 daResProt <- scpDifferentialAggregate(daResCluster, "gene")
-rank <- daResProt$Cluster_Melanoma_main_vs_Melanoma_sub$Estimate
-names(rank) <-  daResProt$Cluster_Melanoma_main_vs_Melanoma_sub$gene
+rank <- daResProt[[1]]$Estimate
+names(rank) <-  daResProt[[1]]$gene
 rank <- sort(rank, decreasing = FALSE)
 set.seed(1234)
-pseaRes <- out <- fgsea(goBiologicalProcess, 
+pseaRes <- out <- fgsea(goBiologicalProcess,
                         rank,
                         minSize = 20,
                         maxSize = 200,
                         nPermSimple = 2000,
-                        BPPARAM = MulticoreParam(workers = 4))
+                        BPPARAM = SerialParam())
 pseaRes <- pseaRes[pseaRes$padj < 0.05, ]
 (pseaRes <- pseaRes[order(pseaRes$padj), ])
 ## Save PSEA results
 out$leadingEdge <- sapply(out$leadingEdge, paste, collapse = ", ")
 write.csv(
-    x = out, file = "data/PSEA_results.csv",
+    x = out, file = paste0(dataDir, "PSEA_results.csv"),
     row.names = FALSE
 )
 ## Create annotation table with 2 pathways
@@ -703,10 +585,10 @@ daResCluster <- scpAnnotateResults(
 )
 ## Plot volcano with PSEA
 volcanos <- scpVolcanoPlot(
-    daResCluster, textBy = "gene", 
+    daResCluster, textBy = "gene", top = 15,
     labelParams = list(max.overlaps = 30),
     pointParams = list(
-        aes(colour = pathway, 
+        aes(colour = pathway,
             alpha = pathway == "other")
     )
 )
@@ -719,7 +601,7 @@ volcanos <- lapply(names(volcanos), function(i) {
     volcanos[[i]] +
         ggtitle(title)
 })
-(panel3 <- volcanos[[2]] +
+(panel3 <- volcanos[[1]] +
         scale_alpha_manual(values = c(1, 0.2)) +
         scale_color_manual(values = c("grey50", "green4", "orange2")) +
         guides(alpha = "none") +
@@ -733,21 +615,21 @@ volcanos <- lapply(names(volcanos), function(i) {
             design = "1222
                       3333") +
         plot_annotation(tag_levels = "a"))
-ggsave("figs/supp_remodel.pdf", fig, height = 6, width = 7)
+ggsave(paste0(figDir, "supp_remodel.pdf"), fig, height = 6, width = 7)
 
 ## Plot normalised enrichment scores
-(fig <- pseaRes |> 
-        filter(padj < 0.05) |> 
+(fig <- pseaRes |>
+        filter(padj < 0.05) |>
         mutate(
             pathway = tolower(pathway),
             pathway = sub("gobp_", "", pathway),
             pathway = gsub("_", " ", pathway),
             pathway = factor(pathway, levels = pathway[order(NES)]),
             type = ifelse(NES > 0, "Melanoma main", "Melanoma subpopulation")
-        ) |> 
+        ) |>
         ggplot() +
-        aes(y = pathway, 
-            x = NES, 
+        aes(y = pathway,
+            x = NES,
             fill = type) +
         geom_bar(stat = "identity") +
         scale_fill_manual(
@@ -760,7 +642,7 @@ ggsave("figs/supp_remodel.pdf", fig, height = 6, width = 7)
              fill = "") +
         theme_minimal() +
         theme(legend.position = "none"))
-ggsave("figs/supp_NES.pdf", fig, height = 4, width = 6)
+ggsave(paste0(figDir, "supp_NES.pdf"), fig, height = 4, width = 6)
 
 ## Compare the differential analysis between modelling sample type vs
 ## cluster
@@ -774,7 +656,7 @@ common <- intersect(daResSt[[1]]$feature, daResCluster[[1]]$feature)
 data.frame(
     SampleTypeAnalysis = daResSt[[1]][match(common, daResSt[[1]]$feature), "Estimate"],
     ClusterAnalysis = daResCluster[[1]][match(common, daResCluster[[1]]$feature), "Estimate"]
-) |> 
+) |>
     ggplot() +
     aes(x = SampleTypeAnalysis,
         y = ClusterAnalysis) +
@@ -809,13 +691,12 @@ sce <- scpModelWorkflow(
         ## normalization
         MedianIntensity +
         ## batch effects
-        Channel + Set + 
+        Channel + Set +
         ## biological variability
         Mock
 )
 scpModelFilterPlot(sce)
 scpModelFilterThreshold(sce) <- 2
-# saveRDS(sce, paste0(dataDir, "leduc2022_pSCoPE_modelled_mock.rds"))
 
 ## Differential analysis
 daResLeduc <- scpDifferentialAnalysis(
@@ -830,9 +711,9 @@ daResLeduc <- scpAnnotateResults(
 ## P-value distribution
 (fig <- ggplot(data.frame(daResLeduc$Mock_Mock1_vs_Mock2)) +
         aes(x = pvalue) +
-        geom_histogram(bins = 30) +
+        geom_histogram(bins = 50) +
         labs(x = "(Unadjusted) p-value") +
-        theme_minimal() 
+        theme_minimal()
 )
 
-ggsave("figs/supp_pvalue_null.pdf", fig, height = 3, width = 4)
+ggsave(paste0(figDir, "supp_pvalue_null.pdf"), fig, height = 3, width = 4)

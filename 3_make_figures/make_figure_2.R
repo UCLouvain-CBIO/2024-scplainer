@@ -12,7 +12,9 @@ library("patchwork")
 library("dplyr")
 library("RColorBrewer")
 
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
+figDir <- "figs/"
+
 
 ####---- Compare sources of variance ----####
 
@@ -35,15 +37,15 @@ vaResAll <- lapply(dataFiles, function(dataFile) {
 })
 vaResCombined <- do.call(rbind, vaResAll)
 vaResCombined$effectName <- recode(
-    vaResCombined$effectName, 
-    Channel = "Label", 
+    vaResCombined$effectName,
+    Channel = "Label",
     Set = "Batch", Run = "Batch", Chip = "Batch",  File.ID = "Batch",
     SampleType = "Biology", Population = "Biology",
     Celltype = "Biology", Treatment = "Biology",
     MedianIntensity = "Normalization Factor"
 )
 vaResCombined$effectName <- factor(
-    vaResCombined$effectName, 
+    vaResCombined$effectName,
     levels = c("Residuals", "Normalization Factor", "Label", "Batch", "Biology")
 )
 cols <- brewer.pal(n = 8, name = "Set2")
@@ -57,8 +59,8 @@ names(cols) <- c(
             fill = effectName) +
         geom_bar(stat = "identity", colour = "black") +
         #facet_wrap(~ dataset, nrow = 1) +
-        labs(x = "", 
-             y = "Explained variance") + 
+        labs(x = "",
+             y = "Explained variance") +
         scale_x_discrete(position = "top") +
         scale_fill_manual(values = cols) +
         theme_classic())
@@ -68,12 +70,12 @@ names(cols) <- c(
 sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 vaRes <- scpVarianceAnalysis(sce)
 vaRes <- scpAnnotateResults(
-    vaRes, rowData(sce)[, c("Sequence", "gene")], 
+    vaRes, rowData(sce)[, c("Sequence", "gene")],
     by = "feature", by2 = "Sequence"
 )
 ## Top 20 peptides affected by sample type
 panel2 <- scpVariancePlot(
-    vaRes, effect = "SampleType", top = 20, fcol = "gene", 
+    vaRes, effect = "SampleType", top = 20, fcol = "gene",
     combined = FALSE
 )
 ## Adapt the labels with more generic names
@@ -82,7 +84,7 @@ cols <- c("white", cols[c(2, 4, 5, 6)])
 names(cols) <- c(
     "Residuals", "Channel", "MedianIntensity", "SampleType", "Set"
 )
-(panel2 <- panel2 + 
+(panel2 <- panel2 +
         scale_fill_manual(
             values = cols,
             labels = c("Residuals", "Normalization Factor", "Label", "Batch", "Biology"),
@@ -110,32 +112,32 @@ df <- data.frame(logIntensity = scpModelInput(sce)[i, ], colData(sce))
             Monocyte = "coral", Melanoma = "skyblue3"
         )) +
         labs(x = "MS acquisition batch",
-             y = "Raw log2(Intensity)", 
+             y = "Raw log2(Intensity)",
              title = paste0(i, " (", prot, ")"),
-             colour = "Cell type") + 
+             colour = "Cell type") +
         theme_minimal())
 
 (panel5 <- scpVariancePlot(
-    endoapply(vaRes, function(x) x[x$feature == i, ]), 
+    endoapply(vaRes, function(x) x[x$feature == i, ]),
     effect = "Set", combined = FALSE
 ))
 panel5$layers[[1]]$geom_params$width <- 0.2
 
 ####---- Create figure ----####
 
-(fig <- 
+(fig <-
      wrap_elements(
-         full = panel1 + 
+         full = panel1 +
              theme(legend.position = "none",
                    axis.text.x = element_text(angle = 90, hjust = 0),
                    axis.line.x = element_blank(),
                    axis.ticks.x = element_blank())
      ) +
-     panel2 + 
+     panel2 +
      scale_x_discrete(position = "top") +
      theme(axis.ticks = element_blank(),
            axis.text.x = element_text(angle = 90, hjust = 0),
-           strip.text = element_text(angle = 90)) + 
+           strip.text = element_text(angle = 90)) +
      panel4 +
      theme(axis.text.x = element_blank(),
            axis.ticks.x = element_blank(),
@@ -148,4 +150,4 @@ panel5$layers[[1]]$geom_params$width <- 0.2
                 11112222
                 33333334", guides = "collect") +
      plot_annotation(tag_levels = "a"))
-ggsave("scripts/figs/variance.pdf", fig, height = 7, width = 10)
+ggsave(paste0(figDir, "variance.pdf"), fig, height = 7, width = 10)

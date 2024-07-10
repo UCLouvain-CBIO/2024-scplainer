@@ -8,7 +8,7 @@
 library("scp")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
 leduc <- readRDS(paste0(dataDir, "leduc2022_plexDIA_processed.rds"))
 
 ####---- Model the data ----####

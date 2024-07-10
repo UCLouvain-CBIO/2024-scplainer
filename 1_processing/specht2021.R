@@ -31,28 +31,28 @@ specht <- zeroIsNA(specht, i = names(specht))
 ####---- Feature quality control ----####
 
 specht <- computeSCR(
-    specht, names(specht), colvar = "SampleType", 
+    specht, names(specht), colvar = "SampleType",
     samplePattern = "Mel|Macro", carrierPattern = "Carrier",
     sampleFUN = "mean", rowDataName = "MeanSCR"
 )
 ## Contaminant plot
-data.frame(rbindRowData(specht, names(specht))) |> 
+data.frame(rbindRowData(specht, names(specht))) |>
     mutate(ContaminantOrReverse = (Reverse == "+" |
                                        Potential.contaminant == "+" |
                                        grepl("REV|CON", protein))) |>
-    ggplot() + 
+    ggplot() +
     aes(x = ContaminantOrReverse) +
     geom_bar() +
     ## PIF plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = PIF) +
     geom_histogram() +
     ## q-value plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = log10(dart_qval)) +
     geom_histogram() +
     ## mean SCR plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = log10(MeanSCR)) +
     geom_histogram()
 specht <- filterFeatures(
@@ -122,13 +122,13 @@ specht <- aggregateFeatures(specht,
                             fun = colMedians,
                             na.rm = TRUE)
 ## Apply majority vote for peptide to protein mapping
-ppMap <- rbindRowData(specht, i = grep("^pep", names(specht))) |> 
+ppMap <- rbindRowData(specht, i = grep("^pep", names(specht))) |>
     data.frame() |>
-    group_by(Sequence) |> 
+    group_by(Sequence) |>
     ## The majority vote happens here
     mutate(protein = names(
         sort(table(protein), decreasing = TRUE))[1]
-    ) |> 
+    ) |>
     dplyr::select(Sequence, protein) %>%
     dplyr::filter(!duplicated(Sequence, protein))
 consensus <- endoapply(rowData(specht)[peptideAssays], function(x) {
@@ -136,14 +136,14 @@ consensus <- endoapply(rowData(specht)[peptideAssays], function(x) {
     DataFrame(protein = ppMap$protein[ind])
 })
 rowData(specht) <- consensus
-## Join peptide assays 
-specht <- joinAssays(specht, i = peptideAssays, 
+## Join peptide assays
+specht <- joinAssays(specht, i = peptideAssays,
                      name = "peptides")
 
 ## Add gene name information
 proteinIds <- rowData(specht)[["peptides"]]$protein
 proteinConversionDf <- transcripts(
-    EnsDb.Hsapiens.v86, 
+    EnsDb.Hsapiens.v86,
     columns = "gene_name",
     return.type = "data.frame",
     filter = UniprotFilter(proteinIds)
@@ -158,4 +158,4 @@ specht <- logTransform(specht, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveRDS(specht, "../data/specht2021_processed.rds")
+saveRDS(specht, "data/specht2021_processed.rds")

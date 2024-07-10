@@ -1,8 +1,8 @@
 
 #### MINIMAL PROCESSING
 
-## This script performs the minimal processing on the 
-## leduc2022_plexDIA dataset. 
+## This script performs the minimal processing on the
+## leduc2022_plexDIA dataset.
 
 ####---- Loading libraries and preparing data ----####
 
@@ -19,7 +19,7 @@ leduc <- leduc2022_plexDIA()
 ## keep only required data
 leduc <- removeAssay(leduc, c("peptides", "proteins"))
 requiredRowData <- c(
-    "Protein.Group", "Protein.Ids", "Protein.Names", "Genes", 
+    "Protein.Group", "Protein.Ids", "Protein.Names", "Genes",
     "First.Protein.Description", "Proteotypic", "Stripped.Sequence",
     "Modified.Sequence", "Precursor.Charge", "Precursor.Id"
 )
@@ -50,7 +50,7 @@ names(MedianIntensity) <- colnames(leduc)[["Ms1Extracted"]]
 colData(leduc)[names(MedianIntensity), "MedianIntensity"] <- MedianIntensity
 ## Median CV per sample
 leduc <- medianCVperCell(
-    leduc, i = "Ms1Extracted", groupBy = "Protein.Group", nobs = 3, 
+    leduc, i = "Ms1Extracted", groupBy = "Protein.Group", nobs = 3,
     na.rm = TRUE, colDataName = "MedianCV", norm = "SCoPE2"
 )
 ## Plot
@@ -83,4 +83,4 @@ leduc <- logTransform(leduc, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveRDS(leduc, "../data/leduc2022_plexDIA_processed.rds")
+saveRDS(leduc, "data/leduc2022_plexDIA_processed.rds")

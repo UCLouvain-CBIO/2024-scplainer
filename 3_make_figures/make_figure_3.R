@@ -12,10 +12,13 @@ library("patchwork")
 library("dplyr")
 library("tidyr")
 
-## data
-sce <- readRDS("./data/leduc2022_pSCoPE_modelled.rds")
+dataDir <- "data/"
+figDir <- "figs/"
+
+sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 
 ####---- Differential analysis ----####
+
 
 daResLeduc <- scpDifferentialAnalysis(
     sce,
@@ -49,16 +52,16 @@ table(padjProt < 0.05)
 vpl <- scpVolcanoPlot(daResLeduc, textBy = "gene", top = 200)
 vpl$SampleType_Melanoma_vs_Monocyte
 (panel2 <- vpl$SampleType_Melanoma_vs_Monocyte +
-        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |> 
+        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |>
                        dplyr::filter(!is.na(gene) & gene == "VIM"),
                    colour = "red3") +
-        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |> 
+        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |>
                        dplyr::filter(!is.na(gene) & gene == "CTTN"),
                    colour = "orange2") +
-        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |> 
+        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |>
                        dplyr::filter(!is.na(gene) & gene == "ARHGDIB"),
                    colour = "dodgerblue") +
-        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |> 
+        geom_point(data = data.frame(daResLeduc$SampleType_Melanoma_vs_Monocyte) |>
                        dplyr::filter(!is.na(gene) & gene == "LCP1"),
                    colour = "purple2") +
         labs(y = "-log10(Adjusted p-value)",
@@ -92,20 +95,20 @@ df <- cbind(df, colData(scebc)[df$name, ])
             y = value) +
         geom_jitter(aes(colour = SampleType), size = 0.25, height = 0) +
         geom_line(data = data.frame(
-            feature = i, 
+            feature = i,
             value = baseline
         ), aes(group = 1)) +
         geom_segment(data = data.frame(
-            feature = i, 
+            feature = i,
             baseline = baseline,
             lfc = lfc
-        ), aes(x = feature, 
+        ), aes(x = feature,
                xend = feature,
                y = baseline - lfc/2,
                yend = baseline + lfc/2)) +
         scale_color_manual(
             values = c(Monocyte = "coral", Melanoma = "skyblue3")
-        ) +    
+        ) +
         labs(x = "", y = "log2(Intensity)",
              title = paste("Batch corrected data for", targetProt, "peptides")) +
         theme_minimal() +
@@ -113,12 +116,12 @@ df <- cbind(df, colData(scebc)[df$name, ])
 
 ####---- Create figure ----####
 
-(fig <- panel1 + 
+(fig <- panel1 +
      geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.25) +
      ylim(0, 5250) + ## leave space for geom_text
-     panel2 + 
+     panel2 +
      panel3 +
      plot_layout(design = "1222
                            3333") +
      plot_annotation(tag_levels = "a"))
-ggsave("./figs/differential.pdf", fig, height = 8, width = 10)
+ggsave(paste0(figDir, "differential.pdf"), fig, height = 8, width = 10)

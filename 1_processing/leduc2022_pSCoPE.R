@@ -2,7 +2,7 @@
 #### MINIMAL PROCESSING
 
 ## This script performs the minimal processing on the leduc2022_pSCoPE
-## dataset. 
+## dataset.
 
 ####---- Loading libraries and preparing data ----####
 
@@ -24,7 +24,7 @@ assaysToRemove <- c(
 )
 leduc <- removeAssay(leduc, assaysToRemove)
 requiredRowData <- c(
-    "Sequence", "Leading.razor.protein.symbol", 
+    "Sequence", "Leading.razor.protein.symbol",
     "Leading.razor.protein.id", "Reverse", "Potential.contaminant",
     "Leading.razor.protein", "PIF", "dart_qval"
 )
@@ -36,28 +36,28 @@ leduc <- zeroIsNA(leduc, i = names(leduc))
 ####---- Feature quality control ----####
 
 leduc <- computeSCR(
-    leduc, names(leduc), colvar = "SampleType", 
+    leduc, names(leduc), colvar = "SampleType",
     samplePattern = "Mel|Macro", carrierPattern = "Carrier",
     sampleFUN = "mean", rowDataName = "MeanSCR"
 )
 df <- data.frame(rbindRowData(leduc, names(leduc)))
-df$ContaminantOrReverse <- df$Reverse != "+" & 
-    df$Potential.contaminant != "+" & 
+df$ContaminantOrReverse <- df$Reverse != "+" &
+    df$Potential.contaminant != "+" &
     !grepl("REV|CON", df$Leading.razor.protein)
 ## Contaminant plot
-ggplot(df) + 
+ggplot(df) +
     aes(x = ContaminantOrReverse) +
     geom_bar() +
     ## PIF plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = PIF) +
     geom_histogram() +
     ## q-value plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = log10(dart_qval)) +
     geom_histogram() +
     ## mean SCR plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = log10(MeanSCR)) +
     geom_histogram()
 leduc <- filterFeatures(
@@ -138,35 +138,35 @@ leduc <- aggregateFeatures(leduc,
                            fun = colMedians,
                            na.rm = TRUE)
 ## Apply majority vote for peptide to protein mapping
-ppMap <- rbindRowData(leduc, i = grep("^pep", names(leduc))) |> 
+ppMap <- rbindRowData(leduc, i = grep("^pep", names(leduc))) |>
     data.frame() |>
-    group_by(Sequence) |> 
+    group_by(Sequence) |>
     ## The majority vote happens here
     mutate(Leading.razor.protein.symbol =
                names(sort(table(Leading.razor.protein.symbol),
                           decreasing = TRUE))[1],
            Leading.razor.protein.id =
                names(sort(table(Leading.razor.protein.id),
-                          decreasing = TRUE))[1]) |> 
+                          decreasing = TRUE))[1]) |>
     dplyr::select(Sequence, Leading.razor.protein.symbol, Leading.razor.protein.id) %>%
     dplyr::filter(!duplicated(Sequence, Leading.razor.protein.symbol))
 consensus <- lapply(peptideAssays, function(i) {
     ind <- match(rowData(leduc)[[i]]$Sequence, ppMap$Sequence)
     DataFrame(Leading.razor.protein.symbol =
                   ppMap$Leading.razor.protein.symbol[ind],
-              Leading.razor.protein.id = 
+              Leading.razor.protein.id =
                   ppMap$Leading.razor.protein.id[ind])
 })
 names(consensus) <- peptideAssays
 rowData(leduc) <- consensus
-## Join peptide assays 
-leduc <- joinAssays(leduc, i = peptideAssays, 
+## Join peptide assays
+leduc <- joinAssays(leduc, i = peptideAssays,
                     name = "peptides")
 
 proteinIds <- rowData(leduc)[["peptides"]]$Leading.razor.protein.id
 ## Add gene name information
 proteinConversionDf <- transcripts(
-    EnsDb.Hsapiens.v86, 
+    EnsDb.Hsapiens.v86,
     columns = "gene_name",
     return.type = "data.frame",
     filter = UniprotFilter(proteinIds)
@@ -181,4 +181,4 @@ leduc <- logTransform(leduc, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveRDS(leduc, "../data/leduc2022_pSCoPE_processed.rds")
+saveRDS(leduc, "data/leduc2022_pSCoPE_processed.rds")

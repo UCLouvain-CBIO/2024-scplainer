@@ -14,7 +14,7 @@ library("ensembldb")
 library("EnsDb.Hsapiens.v86")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
 leduc_plexDIA <- readRDS(paste0(dataDir, "leduc2022_plexDIA_processed.rds"))
 derks <- readRDS(paste0(dataDir, "derks2022_processed.rds"))
 

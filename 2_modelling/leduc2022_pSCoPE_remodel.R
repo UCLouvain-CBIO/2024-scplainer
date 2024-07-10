@@ -6,9 +6,11 @@
 
 ## libraries
 library("scp")
+library("ggplot2")
+library("dplyr")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
 sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 
 ## Component analysis
@@ -18,22 +20,27 @@ caRes <- scpComponentAnalysis(
     maxiter = 50,
     method = "APCA",
     effect = "SampleType",
-    residuals = FALSE, 
+    residuals = FALSE,
     unmodelled = FALSE
 )
-set.seed(11)
 apcaRes <- caRes$bySample$APCA_SampleType
 apcaRes <- as.matrix(apcaRes[, grep("PC", colnames(apcaRes))])
+set.seed(11)
 sce$Cluster <- as.factor(kmeans(apcaRes, 3)$cluster)
-sce$Cluster <- dplyr::recode(
-    sce$Cluster, "1" = "Melanoma_main", "2" = "Melanoma_sub", "3" = "Monocyte"
-)
-ggplot(data.frame(tsneSampleType, colData(sce))) +
-    aes(x = TSNE1, y = TSNE2, colour = Cluster) +
-    geom_point() +
-    ggplot(data.frame(tsneSampleType, colData(sce))) +
-    aes(x = TSNE1, y = TSNE2, colour = SampleType) +
-    geom_point()
+
+## Recode cluster with known labels
+ggplot(data.frame(apcaRes, colData(sce))) +
+    aes(x = PC1, 
+        y = PC2, 
+        colour = Cluster,
+        shape = SampleType) +
+    geom_point() 
+newLabel <- recode(sce$MelanomaSubCluster, A = "main", B = "sub", .missing = "")
+newLabel <- sub("[_]$", "", paste0(sce$SampleType, "_", newLabel))
+labelMap <- table(sce$Cluster, newLabel)
+clusterLabels <- colnames(labelMap)[apply(labelMap, 1, which.max)]
+names(clusterLabels) <- rownames(labelMap)
+sce$Cluster <- clusterLabels[sce$Cluster]
 
 ####---- Model the data ----####
 
@@ -43,7 +50,7 @@ sce <- scpModelWorkflow(
         ## normalization
         MedianIntensity +
         ## batch effects
-        Channel + Set + 
+        Channel + Set +
         ## biological variability
         Cluster,
     name = "model_with_cluster"

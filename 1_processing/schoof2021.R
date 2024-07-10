@@ -1,7 +1,7 @@
 #### MINIMAL PROCESSING
 
 ## This script performs the minimal processing on the schoof2021
-## data set. 
+## data set.
 
 ####---- Loading libraries and preparing data ----####
 
@@ -32,7 +32,7 @@ schoof <- zeroIsNA(schoof, i = names(schoof))
 ####---- Feature quality control ----####
 
 schoof <- computeSCR(
-    schoof, names(schoof), colvar = "SampleType", 
+    schoof, names(schoof), colvar = "SampleType",
     samplePattern = "sc", carrierPattern = "^boost",
     sampleFUN = "mean", rowDataName = "MeanSCR"
 )
@@ -42,15 +42,15 @@ ggplot(df) +
     aes(x = isContaminant) +
     geom_bar() +
     ## PIF plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = Isolation.Interference.in.Percent) +
     geom_histogram() +
     ## q-value plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = log10(Percolator.q.Value)) +
     geom_histogram() +
     ## mean SCR plot
-    ggplot(df) + 
+    ggplot(df) +
     aes(x = log10(MeanSCR)) +
     geom_histogram()
 
@@ -127,7 +127,7 @@ ggplot(data.frame(
     aes(x = nPsms,
         y = counts) +
     geom_bar(stat = "identity") +
-    labs(x = "Number PSMs per peptide", 
+    labs(x = "Number PSMs per peptide",
          title = "schoof2021")
 
 ## Aggregate PSMs to peptides
@@ -138,8 +138,8 @@ schoof <- aggregateFeatures(schoof,
                             name = peptideAssays,
                             fun = colMedians,
                             na.rm = TRUE)
-## Join peptide assays 
-schoof <- joinAssays(schoof, i = peptideAssays, 
+## Join peptide assays
+schoof <- joinAssays(schoof, i = peptideAssays,
                      name = "peptides")
 
 ## Add gene name information
@@ -149,12 +149,12 @@ allProts <- unlist(sapply(allProts, function(x) {
 }, USE.NAMES = FALSE))
 allProts <- sub("[-]\\d*$", "", allProts)
 convert <- transcripts(
-    EnsDb.Hsapiens.v86, 
+    EnsDb.Hsapiens.v86,
     columns = "gene_name",
     return.type = "data.frame",
     filter = UniprotFilter(allProts)
 )
-rowData(schoof)[["peptides"]]$Gene <- 
+rowData(schoof)[["peptides"]]$Gene <-
     sapply(rowData(schoof)[["peptides"]]$Master.Protein.Accessions, function(x) {
         out <- strsplit(x, "; ")[[1]]
         out <- sapply(out, function(xx) {
@@ -173,4 +173,4 @@ schoof <- logTransform(schoof, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveRDS(schoof, "../data/schoof2021_processed.rds")
+saveRDS(schoof, "data/schoof2021_processed.rds")

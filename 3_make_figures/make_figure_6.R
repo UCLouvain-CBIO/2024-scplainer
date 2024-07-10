@@ -13,8 +13,9 @@ library("RColorBrewer")
 library("scater")
 library("dplyr")
 
-## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
+figDir <- "figs/"
+
 sce <- readRDS(paste0(dataDir, "integration_modelled.rds"))
 
 cellTypeCol <- c(Monocyte = "coral", Melanoma = "skyblue3", PDAC = "khaki")
@@ -28,7 +29,7 @@ names(cols) <- names(vaRes)
         scale_fill_manual(
             values = cols,
             labels = c(
-                "Residuals", "Normalization Factor", "Batch", 
+                "Residuals", "Normalization Factor", "Batch",
                 "Label", "Biology"
             )
         )
@@ -36,7 +37,7 @@ names(cols) <- names(vaRes)
 
 ####---- Panel: Volcano plot ----####
 
-## Note that VIM is no longer present because not selected for 
+## Note that VIM is no longer present because not selected for
 ## modelling
 daRes <- scpDifferentialAnalysis(
     sce, contrasts = list(
@@ -58,18 +59,18 @@ vplots <- scpVolcanoPlot(
     )
 )
 (panel2 <- vplots$Celltype_Melanoma_vs_Monocyte +
-        labs(x = "log (Fold change)", 
+        labs(x = "log (Fold change)",
              title = "Monocyte <---> Melanoma cell") +
-        geom_point(data = data.frame(daRes[[1]]) |> 
+        geom_point(data = data.frame(daRes[[1]]) |>
                        dplyr::filter(!is.na(Gene) & Gene == "VIM"),
                    colour = "red3") +
-        geom_point(data = data.frame(daRes[[1]]) |> 
+        geom_point(data = data.frame(daRes[[1]]) |>
                        dplyr::filter(!is.na(Gene) & Gene == "CTTN"),
                    colour = "orange2") +
-        geom_point(data = data.frame(daRes[[1]]) |> 
+        geom_point(data = data.frame(daRes[[1]]) |>
                        dplyr::filter(!is.na(Gene) & Gene == "ARHGDIB"),
                    colour = "dodgerblue") +
-        geom_point(data = data.frame(daRes[[1]]) |> 
+        geom_point(data = data.frame(daRes[[1]]) |>
                        dplyr::filter(!is.na(Gene) & Gene == "LCP1"),
                    colour = "purple2") +
         theme_minimal())
@@ -78,7 +79,7 @@ vplots <- scpVolcanoPlot(
 
 caRes <- scpComponentAnalysis(
     sce, method = "APCA", effects = "Celltype",
-    ncomp = 20, maxiter = 50, residuals = FALSE, 
+    ncomp = 20, maxiter = 50, residuals = FALSE,
 )
 
 ## Data before correction
@@ -94,7 +95,7 @@ tsneUnmodelled <- calculateTSNE(t(as.matrix(pcaUnmodelled)))
         geom_point(alpha = 0.6, size = 2) +
         ggtitle("Raw (unmodelled)") +
         scale_shape_manual(values = 21:24) +
-        scale_fill_manual(values = cellTypeCol) + 
+        scale_fill_manual(values = cellTypeCol) +
         guides(fill = guide_legend(override.aes=list(shape=21))) +
         theme_minimal())
 
@@ -104,14 +105,14 @@ pcaBc <- pcaBc[, grepl("^PC", colnames(pcaBc))]
 set.seed(1111)
 tsneBc <- calculateTSNE(t(as.matrix(pcaBc)))
 (panel4 <- ggplot(data.frame(tsneBc, colData(sce))) +
-        aes(x = TSNE1, 
-            y = TSNE2, 
+        aes(x = TSNE1,
+            y = TSNE2,
             fill = Celltype,
             shape = dataset) +
         geom_point(alpha = 0.6, size = 2) +
         ggtitle("Batch corrected") +
         scale_shape_manual(values = 21:24) +
-        scale_fill_manual(values = cellTypeCol) + 
+        scale_fill_manual(values = cellTypeCol) +
         guides(fill = guide_legend(override.aes=list(shape=21))) +
         theme_minimal())
 
@@ -123,11 +124,11 @@ tsneBc <- calculateTSNE(t(as.matrix(pcaBc)))
         plot_layout(guides = "collect") &
         labs(shape = "Data set")
 )) +
-    (panel1 + 
+    (panel1 +
          labs(fill = "Model variable")) +
     (panel2 +
          guides(shape = "none")) +
     plot_layout(design = "1111
                            2333") +
     plot_annotation(tag_levels = "a"))
-ggsave("scripts/figs/integration.pdf", fig, height = 6, width = 7)
+ggsave(paste0(figDir, "integration.pdf"), fig, height = 6, width = 7)

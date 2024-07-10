@@ -8,7 +8,7 @@
 library("scp")
 
 ## data
-dataDir <- "~/PhD/asca-scp/scripts/data/"
+dataDir <- "data/"
 woo <- readRDS(paste0(dataDir, "woo2022_macrophage_processed.rds"))
 
 ####---- Model the data ----####

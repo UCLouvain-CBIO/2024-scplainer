@@ -142,4 +142,4 @@ derks <- logTransform(derks, i = "peptides", name = "peptides_log")
 
 ####---- Save results ----####
 
-saveRDS(derks, "../data/derks2022_processed.rds")
+saveRDS(derks, "data/derks2022_processed.rds")

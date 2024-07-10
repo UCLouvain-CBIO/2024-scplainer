@@ -1,6 +1,6 @@
 #### BENCHMARKING
 
-## This script generates figure... where we compare our approach to 
+## This script generates figure... where we compare our approach to
 ## concurrent approaches
 
 ####---- Loading libraries and preparing data ----####
@@ -12,11 +12,15 @@ library("ggplot2")
 library("patchwork")
 library("scater")
 library("ggrepel")
+
 ## benchmarking utils
-source("scripts/3_make_figures/utils.R")
+source("3_make_figures/utils.R")
+
+dataDir <- "data/"
+figDir <- "figs/"
 
 populationColors <- c(
-    Monocyte = "coral", 
+    Monocyte = "coral",
     Melanoma = "skyblue3",
     "Undefined Melanoma" = "gray",
     "Resistant Melanoma" = "skyblue",
@@ -83,11 +87,11 @@ batchCorrectHarmonizR_ComBat <- function(x, bioVar, techVar, normVar) {
     mat <- sweep(mat, 2, x[[normVar]], "-")
     mat <- as.data.frame(mat)
     design <- data.frame(
-        ID = colnames(x), sample = 1:ncol(x), 
+        ID = colnames(x), sample = 1:ncol(x),
         batch = as.factor(x[[techVar]])
     )
     mat <- harmonizR(
-        mat, design, algorithm = "ComBat", ComBat_mode = 1, 
+        mat, design, algorithm = "ComBat", ComBat_mode = 1,
         cores = 2, verbosity = 1)
     mat2SCE(as.matrix(mat), x)
 }
@@ -106,14 +110,14 @@ batchCorrectlimma <- function(x, bioVar, techVar, normVar) {
     require("limma")
     mat <- scpModelInput(x)
     techVars <- grep(
-        bioVar, all.vars(scpModelFormula(x)), invert = TRUE, 
+        bioVar, all.vars(scpModelFormula(x)), invert = TRUE,
         value = TRUE
     )
     isFactor <- sapply(techVars, function(i) is.factor(x[[i]]))
     contrs <- lapply(techVars[isFactor], function(i) "contr.sum")
     names(contrs) <- techVars[isFactor]
     techmm <- model.matrix(
-        as.formula(paste("~ 1 +", paste(techVars, collapse = " +"))), 
+        as.formula(paste("~ 1 +", paste(techVars, collapse = " +"))),
         colData(x), contrasts.arg = contrs
     )
     biomm <- model.matrix(as.formula(paste("~ 1 +", bioVar)), colData(x))
@@ -143,14 +147,14 @@ adaptMelanomaAnnotations <- function(mainLabel, subLabel) {
 
 ####---- Running the benchmark ----####
 
-sce <- readRDS("~/PhD/asca-scp/scripts/data/leduc2022_pSCoPE_modelled.rds")
+sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 sce$Population <- adaptMelanomaAnnotations(sce$SampleType, sce$MelanomaSubCluster)
 sce <- sce[, sce$Population != "Undefined Melanoma"]
 benchmarking <- benchmarkMethods(
-    sce, bioVar = "Population", techVar = "Set", 
+    sce, bioVar = "Population", techVar = "Set",
     normVar = "MedianIntensity"
 )
-save(benchmarking, file = "scripts/data/benchmarking.rda")
+save(benchmarking, file = paste0(dataDir, "benchmarking.rda"))
 
 ####---- Plot clustering metrics ----####
 
@@ -158,8 +162,8 @@ save(benchmarking, file = "scripts/data/benchmarking.rda")
     df <- benchmarking[[n]]$metrics
     df$method <- n
     df
-}) |> 
-    do.call(what = rbind) |> 
+}) |>
+    do.call(what = rbind) |>
     ggplot() +
     aes(x = biological,
         y = 1 - technical,
@@ -209,7 +213,7 @@ wrap_plots(lapply(names(benchmarking), function(n) {
      dimredFig +
      plot_annotation(tag_levels = "a") +
      plot_layout(heights = c(0.25, 0.75)))
-ggsave("scripts/figs/benchmark.pdf", fig, height = 8, width = 8)
+ggsave(paste0(figDir, "benchmark.pdf"), fig, height = 8, width = 8)
 
 ####---- Supplementary ----####
 
@@ -223,7 +227,7 @@ for (descriptor in c("Set", "Channel", "lcbatch")) {
                 colour = .data[[descriptor]]) +
             geom_point() +
             labs(x = "t-SNE1", y = "t-SNE2") +
-            ggtitle(paste("Corrected with", n), 
+            ggtitle(paste("Corrected with", n),
                     subtitle = paste("Coloured by", descriptor)) +
             theme_minimal()
         panels <- c(panels, list(pl))
@@ -232,4 +236,4 @@ for (descriptor in c("Set", "Channel", "lcbatch")) {
 (suppFig <- wrap_plots(panels) +
     plot_layout(ncol = 3, byrow = FALSE) &
     theme(legend.position = "none"))
-ggsave("scripts/figs/supp_benchmark.pdf", suppFig, height = 16, width = 10)
+ggsave(paste0(figDir, "supp_benchmark.pdf"), suppFig, height = 16, width = 10)

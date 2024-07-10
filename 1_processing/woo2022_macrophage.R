@@ -1,8 +1,8 @@
 
 #### MINIMAL PROCESSING
 
-## This script performs the minimal processing on the 
-## woo2022_macrophage dataset. 
+## This script performs the minimal processing on the
+## woo2022_macrophage dataset.
 
 ####---- Loading libraries and preparing data ----####
 
@@ -21,7 +21,7 @@ woo <- woo2022_macrophage()
 ## keep only required data
 woo <- woo[, , "peptides_intensity"]
 requiredRowData <- c(
-    "Sequence", "Leading.razor.protein", "Reverse", 
+    "Sequence", "Leading.razor.protein", "Reverse",
     "Potential.contaminant"
 )
 woo <- selectRowData(woo, requiredRowData)
@@ -32,7 +32,7 @@ woo <- zeroIsNA(woo, i = 1)
 if (FALSE) { ## does not work because of annotation mismatch...
     ## convert protein Uniprot ID to gene names
     proteinIds <- rowData(woo)[[1]]$Leading.razor.protein
-    ## mus musculs EnsemblDb annotations (GRCm39) from AnnotationHub, 
+    ## mus musculs EnsemblDb annotations (GRCm39) from AnnotationHub,
     ## latest version at time of writing was v109
     mmus <- query(AnnotationHub(), c("EnsDb", "Mus musculus", "GRCm39", 109))[[1]]
     proteinConversionDf <- transcripts(
@@ -42,21 +42,21 @@ if (FALSE) { ## does not work because of annotation mismatch...
     matchedIndex <- match(proteinIds, proteinConversionDf$uniprot_id)
     geneName <- proteinConversionDf$gene_name[matchedIndex]
     rowData(woo)[[1]]$gene <- geneName
-} 
+}
 ####---- Feature quality control ----####
 
 ## Contaminant plot
 df <- data.frame(rowData(woo)[[1]])
-df$ContaminantOrReverse <- !(df$Reverse != "+" & 
-                                 df$Potential.contaminant != "+" & 
+df$ContaminantOrReverse <- !(df$Reverse != "+" &
+                                 df$Potential.contaminant != "+" &
                                  !grepl("REV|CON", df$Leading.razor.protein))
-ggplot(df) + 
+ggplot(df) +
     aes(x = ContaminantOrReverse) +
     geom_bar()
 ## filter
 woo <- filterFeatures(
-    woo, ~ Reverse != "+" & 
-        Potential.contaminant != "+" & 
+    woo, ~ Reverse != "+" &
+        Potential.contaminant != "+" &
         !grepl("REV|CON", Leading.razor.protein)
 )
 
@@ -94,4 +94,4 @@ woo <- logTransform(woo, i = 1, name = "peptides_log")
 
 ####---- Save results ----####
 
-saveRDS(woo, "../data/woo2022_macrophage_processed.rds")
+saveRDS(woo, "data/woo2022_macrophage_processed.rds")
