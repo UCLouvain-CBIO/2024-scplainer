@@ -13,7 +13,7 @@ DATAFOLDER := data/
 # 1. Process the data using the minimal data processing workflow
 # 2. Model the data using scplainer
 # 3. Make figures from the modelled data
-all: processing modelling figures clean
+all: processing modelling figures
 
 # Rule to run the data processing
 processing:

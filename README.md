@@ -108,7 +108,7 @@ You can start a Rstudio session within a Docker container using the
 following command through your computer terminal:
 
 ```bash
-docker run -e PASSWORD=bioc -p 8787:8787 -v `pwd`:/home/rstudio/2023-scplainer/ cvanderaa/scplainer_paper_docker:latest
+  docker run -e PASSWORD=bioc -p 8787:8787 -v `pwd`:/home/rstudio/2024-scplainer/ cvanderaa/scplainer_paper_docker:latest
 ```
 
 Note you should use `%CD%` instead of `pwd` when using Windows.
@@ -128,7 +128,7 @@ If you don't want to run the analysis in Rstudio through the browser,
 you can access the environment from the command line using:
 
 ```bash
-docker run  -v `pwd`:/home/rstudio/2023-scplainer/ -it cvanderaa/scplainer_paper_docker:latest bash
+docker run  -v `pwd`:/home/rstudio/2024-scplainer/ -it cvanderaa/scplainer_paper_docker:latest bash
 ```
 
 ## Note to future self
@@ -136,7 +136,7 @@ docker run  -v `pwd`:/home/rstudio/2023-scplainer/ -it cvanderaa/scplainer_paper
 ### Build the docker image
 
 If new dependencies are required, update the `Dockerfile` accordingly.
-Build the image (make sure to `cd` in the `2023-scplainer/Docker`
+Build the image (make sure to `cd` in the `2024-scplainer/Docker`
 folder):
 
 ```bash
@@ -148,7 +148,7 @@ docker build -t cvanderaa/scplainer_paper_docker:latest .
 When complete, push the new image to DockerHub:
 
 ```bash
-docker push cvanderaa/scp_replication_docker:latest
+docker push cvanderaa/scplainer_paper_docker:latest
 ```
 
 ### Run complete analysis
@@ -156,11 +156,13 @@ docker push cvanderaa/scp_replication_docker:latest
 Run the following command to fully reproduce the analysis:
 
 ```bash
-docker run  -v `pwd`:/home/rstudio/2023-scplainer/ -it cvanderaa/scplainer_paper_docker:latest bash
+docker run  -v `pwd`:/home/rstudio/2024-scplainer/ -it cvanderaa/scplainer_paper_docker:latest bash
 
-cd 2023-scplainer/
+cd 2024-scplainer/
 make all
+make clean
 ```
 
 This will automatically update all figures in `figs/` and intermediate
-data is stored in `data/`.
+data is stored in `data/`. `make clean` will remove any unnecessary
+intermediated files.
