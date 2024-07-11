@@ -71,7 +71,7 @@ tsneSampleType <-calculateTSNE(t(as.matrix(apcaSampleType)))
 
 ####---- Cell cluster analysis on batch correction ----####
 
-set.seed(11)
+set.seed(2222)
 sce$Cluster <- as.factor(kmeans(apcaSampleType, 3)$cluster)
 (panel3 <- data.frame(tsneSampleType, colData(sce)) |>
         ggplot() +

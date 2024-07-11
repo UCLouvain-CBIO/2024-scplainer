@@ -25,16 +25,16 @@ caRes <- scpComponentAnalysis(
 )
 apcaRes <- caRes$bySample$APCA_SampleType
 apcaRes <- as.matrix(apcaRes[, grep("PC", colnames(apcaRes))])
-set.seed(11)
+set.seed(2222)
 sce$Cluster <- as.factor(kmeans(apcaRes, 3)$cluster)
 
 ## Recode cluster with known labels
-ggplot(data.frame(apcaRes, colData(sce))) +
-    aes(x = PC1, 
-        y = PC2, 
+fig <- ggplot(data.frame(apcaRes, colData(sce))) +
+    aes(x = PC1,
+        y = PC2,
         colour = Cluster,
         shape = SampleType) +
-    geom_point() 
+    geom_point()
 newLabel <- recode(sce$MelanomaSubCluster, A = "main", B = "sub", .missing = "")
 newLabel <- sub("[_]$", "", paste0(sce$SampleType, "_", newLabel))
 labelMap <- table(sce$Cluster, newLabel)

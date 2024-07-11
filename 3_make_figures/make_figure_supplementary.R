@@ -4,7 +4,9 @@
 ## This script generates the supplementary figures about miscellaneous
 ## topics to support the claims in the body of the work.
 
+
 ####---- Loading libraries and data ----####
+
 
 ## libraries
 library("scp")
@@ -34,7 +36,9 @@ populationColors <- c(
     PDAC = "khaki"
 )
 
+
 ####---- Workflow: order matters ----####
+
 
 ## Batch correction and imputation is not the same as imputation and
 ## batch correction
@@ -64,7 +68,7 @@ panel1 <- ggplot(data.frame(M = m[sub], A = a[sub])) +
          y = "(Method1 + Method2) / 2") +
     geom_point(alpha = 0.1, size = 0.5) +
     theme_minimal()
-pcLabs <- scp:::.createAxisLabelsForPCA(YbiPca$d / sum(YbiPca$d), comp = 1:2)
+pcLabs <- scp:::.pcaAxisLabels(YbiPca$d / sum(YbiPca$d), comp = 1:2)
 panel2 <- ggplot(data.frame(PC = YbiPca$v, colData(sce))) +
     aes(x = PC.1,
         y = PC.2,
@@ -74,7 +78,7 @@ panel2 <- ggplot(data.frame(PC = YbiPca$v, colData(sce))) +
          title = "Method1\nBatch correct and impute") +
     geom_point(alpha = 0.3) +
     theme_minimal()
-pcLabs <- scp:::.createAxisLabelsForPCA(YibPca$d / sum(YibPca$d), comp = 1:2)
+pcLabs <- scp:::.pcaAxisLabels(YibPca$d / sum(YibPca$d), comp = 1:2)
 panel3 <- ggplot(data.frame(PC = YibPca$v, colData(sce))) +
     aes(x = PC.1,
         y = PC.2,
@@ -95,7 +99,9 @@ panel3 <- ggplot(data.frame(PC = YibPca$v, colData(sce))) +
 ggsave(paste0(figDir, "supp_workflow_order_matters.pdf"), fig,
        width = 9, height = 7)
 
+
 ####---- Workflow: steps inside or outside modelling ----####
+
 
 modelData <- function(object, normType, batchCorrectionType, subset) {
     object <- object[subset, ]
@@ -153,7 +159,7 @@ system.time({
         print(strategies[i, ])
         bc <- modelData(
             sce, normType, batchCorrectionType,
-            subset = ascatmp:::scpModelFeatureNames(sce)
+            subset = scp:::scpModelFeatureNames(sce)
         )
         results[[i]] <- benchmarkData(bc, bioVar = "SampleType", techVar = "Set")
         results[[i]]$strategy <- strategies[i, ]
@@ -213,12 +219,14 @@ system.time({
 ggsave(paste0(figDir, "supp_workflow_steps.pdf"), fig,
        width = 12, height = 8)
 
+
 ####---- Workflow: n/p filter ----####
+
 
 sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 pNA <- nNA(sce)$nNArows$pNA
 npRatio <- scpModelFilterNPRatio(sce, filtered = FALSE)
-(fig <- ggplot(data.frame(pNA, npRatio, df)) +
+(fig <- ggplot(data.frame(pNA, npRatio)) +
         aes(x = pNA,
             y = npRatio) +
         geom_point(size = 0.5, alpha = 0.2) +
@@ -228,7 +236,9 @@ npRatio <- scpModelFilterNPRatio(sce, filtered = FALSE)
 ggsave(paste0(figDir, "supp_workflow_filter.pdf"), fig,
        width = 4, height = 4)
 
+
 ####---- Variance analysis ----####
+
 
 ## VIM is not influenced by cell size
 sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
@@ -242,23 +252,15 @@ target <- "CORO1A"
 i <- data.frame(vaRes$SampleType) |>
     filter(!is.na(gene) & gene == target) |>
     slice_max(SS) |>
-    pull(feature)
-## Create annotation with cell sizes
-cellenoneData <- read.csv(paste0(dataDir, "cellenoneData.csv"), row.names = 1)
-cellenoneData$Channel <- as.numeric(sub("^RI(\\d*)$", "\\1", cellenoneData$Label))
-tmts <- c("126", paste0(rep(127:134, each = 2), rep(c("N", "C"), 8)), "135N")
-cellenoneData$Channel <- paste0("TMT", tmts[cellenoneData$Channel])
-annot <- left_join(data.frame(colData(sce)),
-                   cellenoneData[, c("Set", "Channel", "Diameter", "Elongation")],
-                   by = c("Set", "Channel"))
+    pull(feature<)
 (fig <- ggplot(data.frame(logIntensity = assay(sce)[i, ],
-                          annot)) +
+                          colData(sce))) +
         ggtitle("Raw data") +
         ggplot(data.frame(logIntensity = assay(scpModelEffects(sce)[["MedianIntensity"]])[i, ],
-                          annot)) +
+                          colData(sce))) +
         ggtitle("Normalization effect") +
         ggplot(data.frame(logIntensity = assay(scpKeepEffect(sce, c("SampleType")))[i, ],
-                          annot)) +
+                          colData(sce))) +
         ggtitle("Corrected data") +
         plot_layout(guides = "collect") +
         plot_annotation(title = paste(
@@ -278,11 +280,15 @@ ggsave(
     width = 11, height = 4
 )
 
+
 ####---- Differential analysis ----####
+
 
 ## none
 
+
 ####---- Component analysis ----####
+
 
 sce <- readRDS(paste0(dataDir, "leduc2022_pSCoPE_modelled.rds"))
 ## Adapt annotations
@@ -375,9 +381,9 @@ ggsave(paste0(figDir, "supp_component_batch_qc.pdf"), fig, height = 8, width = 1
 
 ## Cell cluster analysis on raw data
 clusters <- list()
-set.seed(11) ## set seed to match clustering of the main component fig
+set.seed(2222) ## set seed to match clustering of the main component fig
 clusters$unmodelled <- as.factor(kmeans(pcaUnmodelled, 3)$cluster)
-set.seed(11) ## set seed to match clustering of the main component fig
+set.seed(2222) ## set seed to match clustering of the main component fig
 clusters$batchCorrected <- as.factor(kmeans(apcaSampleType, 3)$cluster)
 tsnes <- list(
     unmodelled = tsneUnmodelled,
@@ -439,20 +445,20 @@ dfAll <- inner_join(dfIntegration, dfLeduc, by = "feature")
 nrow(dfAll)
 table(sign(dfAll$logfc_integr), sign(dfAll$logfc_leduc))
 #     -1   1
-# -1 874 542
-# 1  342 803
+# -1 813 339
+# 1  557 869
 table(sign(dfAll$logfc_integr), sign(dfAll$logfc_leduc)) / nrow(dfAll)
-#           -1         1
-# -1 0.3412729 0.2116361
-# 1  0.1335416 0.3135494
+#             -1         1
+#   -1 0.3153607 0.1314973
+#   1  0.2160590 0.3370830
 table(dfAll$padj_integr < 0.05, dfAll$padj_leduc < 0.05)
-#       FALSE TRUE
-# FALSE   703  396
-# TRUE    519  531
+#         FALSE TRUE
+#   FALSE   959 1025
+#   TRUE    171  423
 table(dfAll$padj_integr < 0.05, dfAll$padj_leduc < 0.05) / nrow(dfAll)
-#           FALSE      TRUE
-# FALSE 0.3121670 0.1758437
-# TRUE  0.2304618 0.2357904
+#              FALSE       TRUE
+#   FALSE 0.37199379 0.39759503
+#   TRUE  0.06633049 0.16408068
 
 ## The two analyses provide contradictory results for some peptides
 i <- "SFVLNLGK"

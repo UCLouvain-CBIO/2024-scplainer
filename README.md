@@ -93,7 +93,7 @@ your local machine using `Docker`. You must first install Docker.
 Then, pull the image from the
 [DockerHub repository](https://hub.docker.com/repository/docker/cvanderaa/scplainer_paper_docker).
 
-```
+```bash
 docker pull cvanderaa/scplainer_paper_docker:latest
 ```
 
@@ -107,7 +107,7 @@ Cd in github repo
 You can start a Rstudio session within a Docker container using the
 following command through your computer terminal:
 
-```
+```bash
 docker run -e PASSWORD=bioc -p 8787:8787 -v `pwd`:/home/rstudio/2023-scplainer/ cvanderaa/scplainer_paper_docker:latest
 ```
 
@@ -118,9 +118,18 @@ Open your browser and go to http://localhost:8787. The USER is
 repository](https://hub.docker.com/repository/docker/cvanderaa/scplainer_paper_docker)
 for more detailed information on getting started with `Docker`.
 
+Once the Rstudio/R session opened, you have access to all the scripts
+and any saved file within the session will also be saved on your local
+computer.
+
 ## Reproducing analysis through the command line
 
+If you don't want to run the analysis in Rstudio through the browser,
+you can access the environment from the command line using:
 
+```bash
+docker run  -v `pwd`:/home/rstudio/2023-scplainer/ -it cvanderaa/scplainer_paper_docker:latest bash
+```
 
 ## Note to future self
 
@@ -130,12 +139,28 @@ If new dependencies are required, update the `Dockerfile` accordingly.
 Build the image (make sure to `cd` in the `2023-scplainer/Docker`
 folder):
 
-```
+```bash
 docker build -t cvanderaa/scplainer_paper_docker:latest .
 ```
 
+### Publish the docker image
+
 When complete, push the new image to DockerHub:
 
-```
+```bash
 docker push cvanderaa/scp_replication_docker:latest
 ```
+
+### Run complete analysis
+
+Run the following command to fully reproduce the analysis:
+
+```bash
+docker run  -v `pwd`:/home/rstudio/2023-scplainer/ -it cvanderaa/scplainer_paper_docker:latest bash
+
+cd 2023-scplainer/
+make all
+```
+
+This will automatically update all figures in `figs/` and intermediate
+data is stored in `data/`.
