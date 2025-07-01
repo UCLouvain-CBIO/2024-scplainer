@@ -108,16 +108,17 @@ populationColorScale <- scale_color_manual(
 
 (fig <- panel1 +
         ggtitle("Raw (unmodelled) data") +
-        guides(shape = FALSE) +
+        guides(shape = "none") +
         populationColorScale +
         panel2 +
         ggtitle("Batch corrected data") +
-        guides(shape = FALSE) +
+        guides(shape = "none") +
         populationColorScale +
         panel3 +
         ggtitle("Cluster analysis") +
         panel4 +
         ggtitle("APCA+ for cell type effects") +
+        guides(shape = "none") +
         populationColorScale +
         plot_layout(design = "123
                               444
