@@ -34,13 +34,12 @@ relevant questions.
 
 ## Installation instructions
 
-Participants should install a recent version of R (version >= 4.3.1)
+You should install a recent version of R (version >= 4.4.0)
 and run the following code chunk to install the necessary
 dependencies:
 
 ```r
-install.packages(c("BiocManager", "remotes"))
-BiocManager::install(version = "3.18", ask = FALSE)
+install.packages("BiocManager")
 pkgs <- c("QFeatures", "SingleCellExperiment", "scp", "scpdata",
           "ggplot2", "dplyr", "patchwork", "scater")
 BiocManager::install(pkgs)
@@ -50,7 +49,7 @@ For the second part, also run the following command to install the
 *scplainer* modelling code:
 
 ```r
-BiocManager::install("UCLouvain-CBIO/scp")
+BiocManager::install("scp")
 ```
 
 ## Useful links
@@ -102,13 +101,14 @@ Then, clone the scplainer GitHub repo
 
 ## Reproducing analysis through a Rstudio interface
 
-Cd in github repo
+Move your working directory into the cloned github repository, e.g. 
+using `cd 2024-scplainer`. 
 
 You can start a Rstudio session within a Docker container using the
 following command through your computer terminal:
 
 ```bash
-  docker run -e PASSWORD=bioc -p 8787:8787 -v `pwd`:/home/rstudio/2024-scplainer/ cvanderaa/scplainer_paper_docker:latest
+docker run -e PASSWORD=bioc -p 8787:8787 -v `pwd`:/home/rstudio/2024-scplainer/ cvanderaa/scplainer_paper_docker:latest
 ```
 
 Note you should use `%CD%` instead of `pwd` when using Windows.
@@ -118,9 +118,9 @@ Open your browser and go to http://localhost:8787. The USER is
 repository](https://hub.docker.com/repository/docker/cvanderaa/scplainer_paper_docker)
 for more detailed information on getting started with `Docker`.
 
-Once the Rstudio/R session opened, you have access to all the scripts
-and any saved file within the session will also be saved on your local
-computer.
+Once the Rstudio/R session is opened, you have access to all the
+scripts. Any file saved during the session will also be saved on your
+local computer.
 
 ## Reproducing analysis through the command line
 
@@ -166,3 +166,11 @@ make clean
 This will automatically update all figures in `figs/` and intermediate
 data is stored in `data/`. `make clean` will remove any unnecessary
 intermediated files.
+
+## Licence
+
+The source code in this repository is provided under a permissive
+[Artistic 2.0 license](https://opensource.org/licenses/Artistic-2.0).
+The documentation, including the manual pages and the vignettes, are
+distributed under a
+[CC BY-SA license](https://creativecommons.org/licenses/by-sa/2.0/).
