@@ -10,24 +10,16 @@ doi: [https://doi.org/10.1101/2023.12.14.571792](https://doi.org/10.1101/2023.12
 
 ## Abstract
 
-Analysing mass spectrometry (MS)-based single-cell proteomics (SCP)
-data is challenging. The data analysis must address numerous problems
-that are inherent to both MS-based proteomics technologies and
-single-cell experiments. This has led to the development of complex
-and divergent data processing workflows within the field. In this
-work, we present scplainer, a principled and standardised approach
-for extracting meaningful insights from SCP data. The approach relies
-on minimal data processing combined with linear modelling. The
-approach is a simple yet powerful approach for exploring and
-interpreting various types of SCP data. scplainer performs variance
-analysis, differential abundance analysis and component analysis while
-streamlining the visualization of the results. This thorough
-exploration enhances our capacity to gain a deeper understanding of
-the biological processes hidden in the data. Finally, we demonstrate
-that scplainer corrects for technical variability, and even enables
-the integration of data sets from different SCP experiments. The
-approach effectively generates high-quality data that is amenable to
-perform downstream analyses. In conclusion, this work reshapes the
+Analysing mass spectrometry (MS)-based single-cell
+proteomics (SCP) data faces important challenges inherent to MS-based
+technologies and single-cell experiments. We present
+\textit{scplainer}, a principled and standardised approach for
+extracting meaningful insights from SCP data using minimal data
+processing and linear modelling. scplainer performs variance analysis,
+differential abundance analysis and component analysis while
+streamlining result visualisation. scplainer effectively corrects for
+technical variability, enabling the integration of data sets from
+different SCP experiments. In conclusion, this work reshapes the
 analysis of SCP data by moving efforts from dealing with the technical
 aspects of data analysis to focusing on answering biologically
 relevant questions.
