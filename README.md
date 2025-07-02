@@ -3,8 +3,6 @@
 The repository contains the scripts to reproduce the results and
 figures of the *scplainer* manuscript.
 
-This repo: 
-
 [![DOI](https://zenodo.org/badge/717364015.svg)](https://doi.org/10.5281/zenodo.15788969)
 
 
